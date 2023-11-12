@@ -25,7 +25,7 @@ type Config struct {
 }
 
 func (conf *Config) Start() {
-	styles := SetColorScheme(conf.ColorScheme)
+	styles := setColorScheme(conf.ColorScheme)
 	conf.Log = log.NewStyledLogger(styles, conf.GetLogLevel())
 	conf.Log.Info(fmt.Sprintf("Starting Watcher for %s", conf.Label))
 	conf.Monitor()
@@ -48,7 +48,7 @@ func (conf *Config) GetLogLevel() int {
 	}
 }
 
-func SetColorScheme(scheme log.ColorScheme) log.LogStyles {
+func setColorScheme(scheme log.ColorScheme) log.LogStyles {
 	styles := log.LogStyles{}
 	styles.Debug = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Debug))
 	styles.Info = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Info))
