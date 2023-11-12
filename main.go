@@ -2,15 +2,12 @@ package main
 
 import (
 	"flag"
-	"fmt"
+	"revolver/log"
 	"revolver/watcher"
 	"strings"
-
-	"github.com/charmbracelet/log"
 )
 
 func main() {
-	log.SetLevel(log.DebugLevel)
 	var rootPath string
 	var ignoreList string
 	var execCommand string
@@ -22,8 +19,6 @@ func main() {
 	flag.StringVar(&logLevel, "log", "", "Level to set Logs")
 	flag.Parse()
 
-
-	log.Info(fmt.Sprintf("Ignore list: %s", ignoreList))
 	ignoreListSlice := strings.Split(ignoreList, ",")
 
 	watch := watcher.Config{
@@ -31,9 +26,15 @@ func main() {
 		RootPath:    rootPath,
 		IgnoreList:  ignoreListSlice,
 		ExecCommand: strings.Fields(execCommand),
-		LogLevel:   logLevel,
+		LogLevel:    logLevel,
+		ColorScheme: log.ColorScheme{
+			Info:   "#ccff33",
+			Debug:  "#44aaee",
+			Error:  "#ff3355",
+			Warn:   "#ffcc55",
+			Fatal:  "#771111",
+		},
 	}
-	log.Info("Starting Watcher")
 	// watch := watcher.Config{
 	// 	Label:       "Golang",
 	// 	RootPath:    "../testProject",

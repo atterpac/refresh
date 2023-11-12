@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"revolver/log"
 	"runtime"
 
-	"github.com/charmbracelet/log"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/rjeczalik/notify"
 )
 
@@ -18,31 +19,62 @@ type Config struct {
 	ExecCommand []string `toml:"exec_command"`
 	IgnoreList  []string `toml:"ignore_list"`
 	LogLevel    string   `toml:"log_level"`
+	Log         log.Logger
+	ColorScheme log.ColorScheme
+	LogStyles   log.LogStyles
 }
 
-func (watcher *Config) Start() {
-	setLogLevel(watcher)
-	log.Debug(fmt.Sprintf("Starting Watcher for %s", watcher.Label))
-	Monitor(watcher)
+func (conf *Config) Start() {
+	styles := SetColorScheme(conf.ColorScheme)
+	conf.Log = log.NewStyledLogger(styles, conf.GetLogLevel())
+	conf.Log.Info(fmt.Sprintf("Starting Watcher for %s", conf.Label))
+	Monitor(conf)
+}
+
+func (conf *Config) GetLogLevel() int {
+	switch conf.LogLevel {
+	case "debug":
+		return log.DebugLevel
+	case "info":
+		return log.InfoLevel
+	case "warn":
+		return log.WarnLevel
+	case "error":
+		return log.ErrorLevel
+	case "fatal":
+		return log.FatalLevel
+	default:
+		return log.InfoLevel
+	}
+}
+
+func SetColorScheme(scheme log.ColorScheme) log.LogStyles {
+	styles := log.LogStyles{}
+	styles.Debug = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Debug))
+	styles.Info = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Info))
+	styles.Warn = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Warn))
+	styles.Error = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Error))
+	styles.Fatal = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Fatal)).Bold(true)
+	return styles
 }
 
 // Top level function that takes in a WatchEngine and starts a goroutine with its out fsnotify.Watcher and ruleset
 func Monitor(conf *Config) {
 	// Start Exec Command
 	if len(conf.ExecCommand) == 0 {
-		log.Fatal("No Exec Command Provided")
+		conf.Log.Fatal("No Exec Command Provided")
 	}
 	conf.Process = Reload(*conf)
 	// Create Channel for Events
 	e := make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
 	if err := notify.Watch(conf.RootPath+"/...", e, notify.All); err != nil {
-		log.Error("Error creating watcher")
+		conf.Log.Error("Error creating watcher")
 	}
 	defer notify.Stop(e)
 	// Initial Load
 	if runtime.GOOS == "linux" {
-		log.Debug("Linux Detected")
+		conf.Log.Debug("Linux Detected")
 		watchLinux(conf, e)
 	} else {
 		watchEvents(conf, e)
@@ -52,7 +84,6 @@ func Monitor(conf *Config) {
 func containsIgnore(ignore []string, path string) bool {
 	for _, ignorePath := range ignore {
 		if path == ignorePath || filepath.Base(path) == ignorePath {
-			log.Info(fmt.Sprintf("Ignoring Modification: %s", path))
 			return true
 		}
 	}
@@ -61,6 +92,7 @@ func containsIgnore(ignore []string, path string) bool {
 
 // Watches fs.Notify events based on rules inside the provided WatchEngine
 func watchLinux(conf *Config, e chan notify.EventInfo) {
+	log := conf.Log
 	for {
 		ei := <-e
 		if containsIgnore(conf.IgnoreList, ei.Path()) {
@@ -85,7 +117,7 @@ func watchLinux(conf *Config, e chan notify.EventInfo) {
 		case notify.InDelete:
 			log.Info(fmt.Sprintf("Deleted: %s", ei))
 			conf.Process = Reload(*conf)
-		// Base Events in case linux emits them
+		// Base Events in case linux emits them (like ubunutu)
 		case notify.Write:
 			log.Info(fmt.Sprintf("Write: %s", ei.Path()))
 			conf.Process = Reload(*conf)
@@ -107,31 +139,15 @@ func watchEvents(conf *Config, e chan notify.EventInfo) {
 		}
 		switch ei.Event() {
 		case notify.Write:
-			log.Info(fmt.Sprintf("Write: %s", ei.Path()))
+			conf.Log.Info(fmt.Sprintf("Write: %s", ei.Path()))
 			conf.Process = Reload(*conf)
 		case notify.Create:
-			log.Info(fmt.Sprintf("Created: %s", ei.Path()))
+			conf.Log.Info(fmt.Sprintf("Created: %s", ei.Path()))
 		case notify.Remove:
-			log.Info(fmt.Sprintf("Removed: %s", ei.Path()))
+			conf.Log.Info(fmt.Sprintf("Removed: %s", ei.Path()))
 		case notify.Rename:
-			log.Info(fmt.Sprintf("Renamed: %s", ei.Path()))
+			conf.Log.Info(fmt.Sprintf("Renamed: %s", ei.Path()))
 		}
 	}
 }
 
-func setLogLevel(conf *Config) {
-	switch conf.LogLevel {
-	case "debug":
-		log.SetLevel(log.DebugLevel)
-	case "info":
-		log.SetLevel(log.InfoLevel)
-	case "warn":
-		log.SetLevel(log.WarnLevel)
-	case "error":
-		log.SetLevel(log.ErrorLevel)
-	case "fatal":
-		log.SetLevel(log.FatalLevel)
-	default:
-		log.SetLevel(log.InfoLevel)
-	}
-}
