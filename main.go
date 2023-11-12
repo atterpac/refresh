@@ -2,8 +2,8 @@ package main
 
 import (
 	"flag"
-	"revolver/log"
-	"revolver/watcher"
+	"gotato/log"
+	"gotato/watcher"
 	"strings"
 )
 

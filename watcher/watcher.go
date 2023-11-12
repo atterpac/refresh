@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"revolver/log"
+	"gotato/log"
 	"runtime"
 
 	"github.com/charmbracelet/lipgloss"

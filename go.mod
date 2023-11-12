@@ -1,4 +1,4 @@
-module revolver
+module gotato
 
 go 1.21.1
 
