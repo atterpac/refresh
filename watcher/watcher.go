@@ -28,7 +28,7 @@ func (conf *Config) Start() {
 	styles := SetColorScheme(conf.ColorScheme)
 	conf.Log = log.NewStyledLogger(styles, conf.GetLogLevel())
 	conf.Log.Info(fmt.Sprintf("Starting Watcher for %s", conf.Label))
-	Monitor(conf)
+	conf.Monitor()
 }
 
 func (conf *Config) GetLogLevel() int {
@@ -59,7 +59,7 @@ func SetColorScheme(scheme log.ColorScheme) log.LogStyles {
 }
 
 // Top level function that takes in a WatchEngine and starts a goroutine with its out fsnotify.Watcher and ruleset
-func Monitor(conf *Config) {
+func (conf *Config) Monitor() {
 	// Start Exec Command
 	if len(conf.ExecCommand) == 0 {
 		conf.Log.Fatal("No Exec Command Provided")
@@ -146,7 +146,7 @@ func watchEvents(conf *Config, e chan notify.EventInfo) {
 		case notify.Remove:
 			conf.Log.Info(fmt.Sprintf("Removed: %s", ei.Path()))
 		case notify.Rename:
-			conf.Log.Info(fmt.Sprintf("Renamed: %s", ei.Path()))
+			conf.Log.Debug(fmt.Sprintf("Renamed: %s", ei.Path()))
 		}
 	}
 }
