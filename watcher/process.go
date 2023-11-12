@@ -7,9 +7,9 @@ import (
 )
 
 //TODO: Pipe stdout from process into the watch engine or the logs
-func Reload(engine Watcher) *os.Process {
-	releaseProcess(engine.Process)
-	process, err := startProcess(engine.Config.ExecCommand, engine.Config.RootPath)
+func Reload(conf Config) *os.Process {
+	releaseProcess(conf.Process)
+	process, err := startProcess(conf.ExecCommand, conf.RootPath)
 	if err != nil {
 		fmt.Println("Error starting process")
 		return nil
