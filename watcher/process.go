@@ -2,30 +2,41 @@ package watcher
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 )
+
 //TODO: Pipe stdout from process into the watch engine or the logs
-func Reload(conf WatchEngine) int {
-	killProcess(conf.Pid)
-	Pid, err := startProcess(conf.ExecCommand, conf.RootPath)
+func Reload(engine Watcher) *os.Process {
+	releaseProcess(engine.Process)
+	process, err := startProcess(engine.Config.ExecCommand, engine.Config.RootPath)
 	if err != nil {
 		fmt.Println("Error starting process")
-		return 0
+		return nil
 	}
-	return Pid
+	return process
 }
 
-func killProcess(pid int) {
-	// TODO: pkill PID so process can be restarted with new build version
+
+func releaseProcess(process *os.Process) {
+	if process != nil {	
+		err := process.Release()
+		if err != nil {
+			fmt.Println("Error killing process", err)
+		}
+	}
 }
 
-func startProcess(args []string, dir string) (int, error) {
+func startProcess(args []string, dir string) (*os.Process, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
 	err := cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
-		return 0, err
+		return nil, err
 	}
-	return cmd.Process.Pid, nil
+	return cmd.Process, nil
 }

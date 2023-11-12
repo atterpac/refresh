@@ -1,0 +1,12 @@
+[watcher]
+label = "backend"
+root_path = "./"
+ignore_list = [".git", ".hg", ".svn", ".DS_Store", ".idea", ".vscode", "node_modules" , ".nuxt", ".env"]
+exec_command = "go run main.go"
+
+[watcher]
+label = "frontend"
+root_path = "./frontend"
+ignore_list = [".git", ".hg", ".svn", ".DS_Store", ".idea", ".vscode", "node_modules" , ".nuxt", ".env"]
+exec_command = "npm run dev"
+
