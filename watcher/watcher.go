@@ -103,19 +103,19 @@ func watchLinux(conf *Config, e chan notify.EventInfo) {
 			log.Info(fmt.Sprintf("Write: %s", ei.Path()))
 			conf.Process = Reload(*conf)
 		case notify.InModify:
-			log.Info(fmt.Sprintf("Modified: %s", ei))
+			log.Info(fmt.Sprintf("Modified: %s", ei.Path()))
 			conf.Process = Reload(*conf)
 		case notify.InMovedTo:
-			log.Info(fmt.Sprintf("MovedTo: %s", ei))
+			log.Info(fmt.Sprintf("MovedTo: %s", ei.Path()))
 			conf.Process = Reload(*conf)
 		case notify.InMovedFrom:
-			log.Info(fmt.Sprintf("MovedFrom: %s", ei))
+			log.Info(fmt.Sprintf("MovedFrom: %s", ei.Path()))
 			conf.Process = Reload(*conf)
 		case notify.InCreate:
-			log.Info(fmt.Sprintf("Created: %s", ei))
+			log.Info(fmt.Sprintf("Created: %s", ei.Path()))
 			conf.Process = Reload(*conf)
 		case notify.InDelete:
-			log.Info(fmt.Sprintf("Deleted: %s", ei))
+			log.Info(fmt.Sprintf("Deleted: %s", ei.Path()))
 			conf.Process = Reload(*conf)
 		// Base Events in case linux emits them (like ubunutu)
 		case notify.Write:
