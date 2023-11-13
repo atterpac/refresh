@@ -2,13 +2,11 @@ package watcher
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"gotato/log"
-	"runtime"
-
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rjeczalik/notify"
+	"gotato/log"
+	"os"
+	"path/filepath"
 )
 
 type Config struct {
@@ -48,6 +46,11 @@ func (conf *Config) GetLogLevel() int {
 	}
 }
 
+type EventInfo struct {
+	Name   string
+	Reload bool
+}
+
 func setColorScheme(scheme log.ColorScheme) log.LogStyles {
 	styles := log.LogStyles{}
 	styles.Debug = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Debug))
@@ -72,13 +75,7 @@ func (conf *Config) Monitor() {
 		conf.Log.Error("Error creating watcher")
 	}
 	defer notify.Stop(e)
-	// Initial Load
-	if runtime.GOOS == "linux" {
-		conf.Log.Debug("Linux Detected")
-		watchLinux(conf, e)
-	} else {
-		watchEvents(conf, e)
-	}
+	watchEvents(conf, e)
 }
 
 func containsIgnore(ignore []string, path string) bool {
@@ -90,64 +87,23 @@ func containsIgnore(ignore []string, path string) bool {
 	return false
 }
 
-// Watches fs.Notify events based on rules inside the provided WatchEngine
-func watchLinux(conf *Config, e chan notify.EventInfo) {
-	log := conf.Log
-	for {
-		ei := <-e
-		if containsIgnore(conf.IgnoreList, ei.Path()) {
-			continue
-		}
-		switch ei.Event() {
-		case notify.InCloseWrite:
-			log.Info(fmt.Sprintf("Write: %s", ei.Path()))
-			conf.Process = Reload(*conf)
-		case notify.InModify:
-			log.Info(fmt.Sprintf("Modified: %s", ei))
-			conf.Process = Reload(*conf)
-		case notify.InMovedTo:
-			log.Info(fmt.Sprintf("MovedTo: %s", ei))
-			conf.Process = Reload(*conf)
-		case notify.InMovedFrom:
-			log.Info(fmt.Sprintf("MovedFrom: %s", ei))
-			conf.Process = Reload(*conf)
-		case notify.InCreate:
-			log.Info(fmt.Sprintf("Created: %s", ei))
-			conf.Process = Reload(*conf)
-		case notify.InDelete:
-			log.Info(fmt.Sprintf("Deleted: %s", ei))
-			conf.Process = Reload(*conf)
-		// Base Events in case linux emits them (like ubunutu)
-		case notify.Write:
-			log.Info(fmt.Sprintf("Write: %s", ei.Path()))
-			conf.Process = Reload(*conf)
-		case notify.Create:
-			log.Debug(fmt.Sprintf("Created: %s", ei.Path()))
-		case notify.Remove:
-			log.Debug(fmt.Sprintf("Removed: %s", ei.Path()))
-		case notify.Rename:
-			log.Debug(fmt.Sprintf("Renamed: %s", ei.Path()))
-		}
-	}
-}
-
 func watchEvents(conf *Config, e chan notify.EventInfo) {
 	for {
 		ei := <-e
 		if containsIgnore(conf.IgnoreList, ei.Path()) {
 			continue
 		}
-		switch ei.Event() {
-		case notify.Write:
-			conf.Log.Info(fmt.Sprintf("Write: %s", ei.Path()))
+
+		eventInfo, ok := eventMap[ei.Event()]
+		if !ok {
+			conf.Log.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
+			continue
+		}
+
+		conf.Log.Info(fmt.Sprintf("Event: %s", eventInfo.Name))
+		if eventInfo.Reload {
+			conf.Log.Info("Reloading")
 			conf.Process = Reload(*conf)
-		case notify.Create:
-			conf.Log.Info(fmt.Sprintf("Created: %s", ei.Path()))
-		case notify.Remove:
-			conf.Log.Info(fmt.Sprintf("Removed: %s", ei.Path()))
-		case notify.Rename:
-			conf.Log.Debug(fmt.Sprintf("Renamed: %s", ei.Path()))
 		}
 	}
 }
-
