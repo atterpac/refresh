@@ -20,9 +20,9 @@ func Reload(conf Config) *os.Process {
 
 func releaseProcess(process *os.Process) {
 	if process != nil {	
-		err := process.Release()
+		err := process.Kill()
 		if err != nil {
-			fmt.Println("Error killing process", err)
+			fmt.Println("Error killing process", err.Error())
 		}
 	}
 }
