@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -31,7 +32,7 @@ type ColorScheme struct {
 }
 
 type StyledLogger struct {
-	styles      LogStyles
+	styles       LogStyles
 	loggingLevel int
 }
 
@@ -46,7 +47,6 @@ const (
 func NewStyledLogger(styles LogStyles, level int) *StyledLogger {
 	return &StyledLogger{styles, level}
 }
-
 
 func (l *StyledLogger) Debug(format string, args ...interface{}) {
 	if l.loggingLevel <= DebugLevel {
@@ -76,6 +76,7 @@ func (l *StyledLogger) Fatal(format string, args ...interface{}) {
 	if l.loggingLevel <= FatalLevel {
 		l.log(l.styles.Fatal, format, args...)
 	}
+	os.Exit(1)
 }
 
 func (l *StyledLogger) log(style lipgloss.Style, format string, args ...interface{}) {
@@ -102,14 +103,11 @@ func (l *StyledLogger) SetColorScheme(scheme LogStyles) {
 	l.styles = scheme
 }
 
-
-
 func applyStyle(message string, style lipgloss.Style) string {
 	// Should look like fmt.Sprintf("style.Rener(%s))
 	styledMessage := style.Render(fmt.Sprint("", message))
 	return styledMessage
 }
-
 
 func CreateStyles(debug string, info string, warn string, err string, fatal string) LogStyles {
 	return LogStyles{
