@@ -24,11 +24,11 @@ type LogStyles struct {
 }
 
 type ColorScheme struct {
-	Debug string
-	Info  string
-	Warn  string
-	Error string
-	Fatal string
+	Debug string `toml:"debug"`
+	Info  string `toml:"info"`
+	Warn  string `toml:"warn"`
+	Error string `toml:"error"`
+	Fatal string `toml:"fatal"`
 }
 
 type StyledLogger struct {

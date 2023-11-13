@@ -2,9 +2,7 @@ package main
 
 import (
 	"flag"
-	"gotato/log"
 	"gotato/watcher"
-	"strings"
 )
 
 func main() {
@@ -12,29 +10,17 @@ func main() {
 	var ignoreList string
 	var execCommand string
 	var logLevel string
+	var confPath string
 
 	flag.StringVar(&rootPath, "path", ".", "Root path to watch")
 	flag.StringVar(&ignoreList, "ignore", "", "Comma-separated list of files to ignore")
 	flag.StringVar(&execCommand, "exec", "", "Command to execute on changes")
 	flag.StringVar(&logLevel, "log", "", "Level to set Logs")
+	flag.StringVar(&confPath, "f", "", "File to read config from")
 	flag.Parse()
 
-	ignoreListSlice := strings.Split(ignoreList, ",")
 
-	watch := watcher.Config{
-		Label:       "Golang",
-		RootPath:    rootPath,
-		IgnoreList:  ignoreListSlice,
-		ExecCommand: strings.Fields(execCommand),
-		LogLevel:    logLevel,
-		ColorScheme: log.ColorScheme{
-			Info:   "#ccff33",
-			Debug:  "#44aaee",
-			Error:  "#ff3355",
-			Warn:   "#ffcc55",
-			Fatal:  "#771111",
-		},
-	}
+	watch := watcher.NewWatcherFromConfig(confPath)
 	// watch := watcher.Config{
 	// 	Label:       "Golang",
 	// 	RootPath:    "../testProject",

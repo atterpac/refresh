@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 //TODO: Pipe stdout from process into the watch engine or the logs
-func Reload(conf Config) *os.Process {
-	releaseProcess(conf.Process)
-	process, err := startProcess(conf.ExecCommand, conf.RootPath)
+func Reload(engine Engine) *os.Process {
+	releaseProcess(engine.Process)
+	cmd := generateExec(engine.Config.ExecCommand)
+	process, err := startProcess(cmd, engine.Config.RootPath)
 	if err != nil {
 		fmt.Println("Error starting process")
 		return nil
@@ -39,4 +41,9 @@ func startProcess(args []string, dir string) (*os.Process, error) {
 		return nil, err
 	}
 	return cmd.Process, nil
+}
+
+func generateExec(cmd string) []string {
+	// String split on spaces
+	return strings.Split(cmd, " ")
 }

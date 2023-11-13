@@ -1,0 +1,13 @@
+[config]
+label = "My Project"
+root_path = "../testProject"
+exec_command = "go run main.go"
+ignore = ["newfile.go"]
+log_level = "info"
+
+[color_scheme]
+info = "#00ff00"
+warn = "#ffff00"
+error = "#ff0000"
+debug = "#0000ff"
+fatal = "#ff0000"

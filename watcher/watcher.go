@@ -2,35 +2,49 @@ package watcher
 
 import (
 	"fmt"
-	"github.com/charmbracelet/lipgloss"
-	"github.com/rjeczalik/notify"
 	"gotato/log"
 	"os"
 	"path/filepath"
+
+	"github.com/BurntSushi/toml"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/rjeczalik/notify"
 )
 
-type Config struct {
+type Engine struct {
 	Process     *os.Process
 	Active      bool
-	Label       string   `toml:"label"`
-	RootPath    string   `toml:"root_path"`
-	ExecCommand []string `toml:"exec_command"`
-	IgnoreList  []string `toml:"ignore_list"`
-	LogLevel    string   `toml:"log_level"`
+	Config      Config          `toml:"config"`
+	ColorScheme log.ColorScheme `toml:"color_scheme"`
 	Log         log.Logger
-	ColorScheme log.ColorScheme
 	LogStyles   log.LogStyles
 }
 
-func (conf *Config) Start() {
-	styles := setColorScheme(conf.ColorScheme)
-	conf.Log = log.NewStyledLogger(styles, conf.GetLogLevel())
-	conf.Log.Info(fmt.Sprintf("Starting Watcher for %s", conf.Label))
-	conf.Monitor()
+type Config struct {
+	Label       string   `toml:"label"`
+	RootPath    string   `toml:"root_path"`
+	ExecCommand string   `toml:"exec_command"`
+	IgnoreList  []string `toml:"ignore"`
+	LogLevel    string   `toml:"log_level"`
 }
 
-func (conf *Config) GetLogLevel() int {
-	switch conf.LogLevel {
+func NewWatcherFromConfig(confPath string) *Engine {
+	conf := Engine{}
+	conf.readConfigFile(confPath)
+	return &conf
+}
+
+func (engine *Engine) Start() {
+	styles := setColorScheme(engine.ColorScheme)
+	engine.readConfigFile("./gotato.toml")
+	engine.Log = log.NewStyledLogger(styles, engine.GetLogLevel())
+	engine.Log.Info(fmt.Sprintf("Color Scheme %s", engine.ColorScheme))
+	engine.Log.Info(fmt.Sprintf("Starting Watcher for %s", engine.Config.Label))
+	engine.Monitor()
+}
+
+func (engine *Engine) GetLogLevel() int {
+	switch engine.Config.LogLevel {
 	case "debug":
 		return log.DebugLevel
 	case "info":
@@ -44,6 +58,14 @@ func (conf *Config) GetLogLevel() int {
 	default:
 		return log.InfoLevel
 	}
+}
+
+func (engine *Engine) readConfigFile(path string) *Engine {
+	if _, err := toml.DecodeFile(path, &engine); err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Config", engine.Config)
+	return engine
 }
 
 type EventInfo struct {
@@ -62,20 +84,20 @@ func setColorScheme(scheme log.ColorScheme) log.LogStyles {
 }
 
 // Top level function that takes in a WatchEngine and starts a goroutine with its out fsnotify.Watcher and ruleset
-func (conf *Config) Monitor() {
+func (engine *Engine) Monitor() {
 	// Start Exec Command
-	if len(conf.ExecCommand) == 0 {
-		conf.Log.Fatal("No Exec Command Provided")
+	if len(engine.Config.ExecCommand) == 0 {
+		engine.Log.Fatal("No Exec Command Provided")
 	}
-	conf.Process = Reload(*conf)
+	engine.Process = Reload(*engine)
 	// Create Channel for Events
 	e := make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
-	if err := notify.Watch(conf.RootPath+"/...", e, notify.All); err != nil {
-		conf.Log.Error("Error creating watcher")
+	if err := notify.Watch(engine.Config.RootPath, e, notify.All); err != nil {
+		engine.Log.Error("Error creating watcher", err.Error())
 	}
 	defer notify.Stop(e)
-	watchEvents(conf, e)
+	watchEvents(engine, e)
 }
 
 func containsIgnore(ignore []string, path string) bool {
@@ -87,23 +109,23 @@ func containsIgnore(ignore []string, path string) bool {
 	return false
 }
 
-func watchEvents(conf *Config, e chan notify.EventInfo) {
+func watchEvents(engine *Engine, e chan notify.EventInfo) {
 	for {
 		ei := <-e
-		if containsIgnore(conf.IgnoreList, ei.Path()) {
+		if containsIgnore(engine.Config.IgnoreList, ei.Path()) {
 			continue
 		}
 
 		eventInfo, ok := eventMap[ei.Event()]
 		if !ok {
-			conf.Log.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
+			engine.Log.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
 			continue
 		}
 
-		conf.Log.Info(fmt.Sprintf("Event: %s", eventInfo.Name))
+		engine.Log.Info(fmt.Sprintf("Event: %s", eventInfo.Name))
 		if eventInfo.Reload {
-			conf.Log.Info("Reloading")
-			conf.Process = Reload(*conf)
+			engine.Log.Info("Reloading")
+			engine.Process = Reload(*engine)
 		}
 	}
 }
