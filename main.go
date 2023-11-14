@@ -16,14 +16,22 @@ func main() {
 	var configPath string
 	var watch *watcher.Engine
 
+	// Ignore
+	var ignoreDir string
+	var ignoreFile string
+	var ignoreExt string
+
+
 	flag.StringVar(&rootPath, "path", "", "Root path to watch")
 	flag.StringVar(&ignoreList, "ignore", "", "Comma-separated list of files to ignore")
 	flag.StringVar(&execCommand, "exec", "", "Command to execute on changes")
 	flag.StringVar(&logLevel, "log", "info", "Level to set Logs")
 	flag.StringVar(&configPath, "f", "", "File to read config from")
+	flag.StringVar(&ignoreDir, "id", "", "Ignore Directory list as comma-separated list")
+	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
+	flag.StringVar(&ignoreExt, "ie", "", "Ignore Extension list as comma-separated list")
 	flag.Parse()
 
-	ignoreListSlice := strings.Split(ignoreList, ",")
 	// TODO: Make file config able to be overridden by cli
 	if len(configPath) != 0 {
 		watch = watcher.NewWatcherFromConfig(configPath)
@@ -35,14 +43,16 @@ func main() {
 			Warn:  "#ffcc55",
 			Fatal: "#771111",
 		}
-		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignoreListSlice, colors)
+		ignore := watcher.Ignore{
+			File:      strings.Split(ignoreFile, ","),
+			Dir:       strings.Split(ignoreDir, ","),
+			Extension: strings.Split(ignoreExt, ","),
+		}
+		// Root | Exec | Label | LogLevel | IgnoreList | Colors as log.ColorScheme
+		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors)
 	}
 
 	tui.Banner("Gotato v0.0.1")
 	watch.Start()
 	<-make(chan struct{})
-}
-
-func isFileConfig(path string) bool {
-	return path != ""
 }

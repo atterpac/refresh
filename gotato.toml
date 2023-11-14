@@ -4,12 +4,10 @@ label = "My Project"
 root_path = "../testProject"
 # Will be split into string array for command ["go", "run", "main.go"]
 exec_command = "go run main.go"
-# TODO: Ignore files by extension
-# TODO: Breakout into ignore_files and ignore_dirs
-ignore = ["newfile.go"]
+
+# debug | info | warn | error | fatal
 log_level = "info"
 
-# TODO: Know better colors
 [color_scheme]
 debug = "#87CEEB"  # Sky Blue
 info = "#98FB98"   # Pale Green
@@ -17,9 +15,7 @@ warn = "#FFD700"   # Gold
 error = "#FFA07A"  # Light Salmon
 fatal = "#FF6347"  # Tomato
 
-# TODO: Implement something like this for ignore
-#[ignore]
-#dir = [".git", "node_modules"]
-#files = [".DS_Store", ".gitignore", ".gitkeep"]
-#types = [".db, .sqlite"]
-
+[config.ignore]
+dir = [".git", "node_modules"]
+file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
+extension = [".db", ".sqlite"]

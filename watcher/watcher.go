@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"github.com/rjeczalik/notify"
 )
 
@@ -16,17 +15,12 @@ type Engine struct {
 	Config      Config          `toml:"config"`
 	ColorScheme log.ColorScheme `toml:"color_scheme"`
 	Log         log.Logger
-	LogStyles   log.LogStyles
 }
 
-type Config struct {
-	IsFile      bool     `toml:"-"`
-	Path        string   `toml:"config_path"`
-	Label       string   `toml:"label"`
-	RootPath    string   `toml:"root_path"`
-	ExecCommand string   `toml:"exec_command"`
-	IgnoreList  []string `toml:"ignore"`
-	LogLevel    string   `toml:"log_level"`
+
+type EventInfo struct {
+	Name   string
+	Reload bool
 }
 
 func (engine *Engine) Start() {
@@ -34,7 +28,7 @@ func (engine *Engine) Start() {
 	engine.Monitor()
 }
 
-func NewWatcher(rootPath, execCommand, label, logLevel string, ignoreList []string, colors log.ColorScheme) *Engine {
+func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, colors log.ColorScheme) *Engine {
 	engine := Engine{}
 	engine.Log = log.NewStyledLogger(engine.ColorScheme, engine.GetLogLevel())
 	engine.Config = Config{
@@ -42,7 +36,7 @@ func NewWatcher(rootPath, execCommand, label, logLevel string, ignoreList []stri
 		ExecCommand: execCommand,
 		Label:       label,
 		LogLevel:    logLevel,
-		IgnoreList:  ignoreList,
+		Ignore:      ignore,
 	}
 	engine.verifyConfig()
 	return &engine
@@ -73,39 +67,6 @@ func (engine *Engine) GetLogLevel() int {
 	}
 }
 
-func (engine *Engine) readConfigFile(path string) *Engine {
-	fmt.Println("Reading Config File", engine.Config.Path)
-	if _, err := toml.DecodeFile(path, &engine); err != nil {
-		fmt.Println("Error reading config file")
-		fmt.Println(err.Error())
-		os.Exit(1)
-	}
-	return engine
-}
-
-func (engine *Engine) verifyConfig() {
-	engine.Log.Debug("Verifying Config")
-	config := engine.Config
-	engine.Log.Debug(fmt.Sprintf("Config: %+v", config))
-	if config.RootPath == "" {
-		engine.Log.Fatal("ERROR: Root Path not set")
-		os.Exit(1)
-	}
-	if config.ExecCommand == "" {
-		engine.Log.Fatal("ERROR: Exec Command not set")
-		os.Exit(1)
-	}
-	if config.Label == "" {
-		engine.Log.Warn("Label not set")
-	}
-}
-
-type EventInfo struct {
-	Name   string
-	Reload bool
-}
-
-// Top level function that takes in a WatchEngine and starts a goroutine with its out fsnotify.Watcher and ruleset
 func (engine *Engine) Monitor() {
 	// Start Exec Command
 	engine.Process = Reload(*engine)
@@ -116,13 +77,14 @@ func (engine *Engine) Monitor() {
 		engine.Log.Error("Error creating watcher", err.Error())
 	}
 	defer notify.Stop(e)
+	engine.Log.Info(fmt.Sprintf("Ignoring %s", engine.Config.Ignore))
 	watchEvents(engine, e)
 }
 
 func watchEvents(engine *Engine, e chan notify.EventInfo) {
 	for {
 		ei := <-e
-		if containsIgnore(engine.Config.IgnoreList, ei.Path()) {
+		if engine.Config.Ignore.CheckIgnore(ei.Path()) {
 			continue
 		}
 
@@ -141,16 +103,6 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 		}
 	}
 }
-
-func containsIgnore(ignore []string, path string) bool {
-	for _, ignorePath := range ignore {
-		if path == ignorePath || filepath.Base(path) == ignorePath {
-			return true
-		}
-	}
-	return false
-}
-
 
 func getPath(log log.Logger, path string) string {
 	wd, err := os.Getwd()
