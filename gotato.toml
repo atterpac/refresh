@@ -1,10 +1,13 @@
+#TODO Add config for commands to run prior to exec_command
+#TODO Add config for commands to run after exec_command
 [config]
 label = "My Project"
 # Relative to this files location
 root_path = "../testProject"
 # Will be split into string array for command ["go", "run", "main.go"]
-exec_command = "go run main.go"
-
+pre_exec = ""
+exec_command = "go build main.go"
+post_exec = ""
 # debug | info | warn | error | fatal
 log_level = "info"
 

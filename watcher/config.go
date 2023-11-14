@@ -7,14 +7,15 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-
 type Config struct {
-	IsFile      bool     `toml:"-"`
-	Label       string   `toml:"label"`
-	RootPath    string   `toml:"root_path"`
-	ExecCommand string   `toml:"exec_command"`
-	Ignore      Ignore   `toml:"ignore"`
-	LogLevel    string   `toml:"log_level"`
+	IsFile      bool   `toml:"-"`
+	Label       string `toml:"label"`
+	RootPath    string `toml:"root_path"`
+	PreExec     string `toml:"pre_exec"`
+	ExecCommand string `toml:"exec_command"`
+	PostExec    string `toml:"post_exec"`
+	Ignore      Ignore `toml:"ignore"`
+	LogLevel    string `toml:"log_level"`
 }
 
 func (engine *Engine) readConfigFile(path string) *Engine {
@@ -25,7 +26,6 @@ func (engine *Engine) readConfigFile(path string) *Engine {
 	}
 	return engine
 }
-
 
 func (engine *Engine) verifyConfig() {
 	engine.Log.Debug("Verifying Config")
