@@ -6,13 +6,13 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func Banner() {
-	style := lipgloss.NewStyle().
+func Banner(text string) {
+	banner := lipgloss.NewStyle().
 		Bold(true).
 		Border(lipgloss.RoundedBorder()).
 		Width(60).
 		Height(1).
 		Align(lipgloss.Center)
 
-	fmt.Println(style.Render("GOTATO v0.0.1"))
+	fmt.Println(banner.Render(text))
 }

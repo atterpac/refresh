@@ -38,7 +38,7 @@ func main() {
 		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignoreListSlice, colors)
 	}
 
-	tui.Banner()
+	tui.Banner("Gotato v0.0.1")
 	watch.Start()
 	<-make(chan struct{})
 }
