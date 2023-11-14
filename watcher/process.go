@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/shirou/gopsutil/process"
@@ -40,6 +41,14 @@ func Reload(engine Engine) *process.Process {
 }
 
 func releaseProcess(process *process.Process) bool {
+	if runtime.GOOS == "windows" {
+		err := killWindows(int(process.Pid))
+		if err != nil {
+			fmt.Println("Error killing process", err.Error())
+			return false
+		}
+		return true
+	}
 	err := process.Kill()
 	if err != nil {
 		fmt.Println("Error killing process", err.Error())
@@ -88,4 +97,13 @@ func generateExec(cmd string) []string {
 
 func (engine *Engine) isRunning() bool {
 	return engine.Process != nil
+}
+
+func killWindows(pid int) error {
+	kill  := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", pid))
+	err := kill.Run()
+	if err != nil {
+		return err
+	}
+	return nil
 }
