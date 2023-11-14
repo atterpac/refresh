@@ -5,10 +5,12 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/shirou/gopsutil/process"
 )
 
 // TODO: Pipe stdout from process into the watch engine or the logs
-func Reload(engine Engine) *os.Process {
+func Reload(engine Engine) *process.Process {
 	// If there is a process already running kill it and run postexec command
 	if engine.isRunning() {
 		ok := releaseProcess(engine.Process)
@@ -37,7 +39,7 @@ func Reload(engine Engine) *os.Process {
 	return process
 }
 
-func releaseProcess(process *os.Process) bool {
+func releaseProcess(process *process.Process) bool {
 	err := process.Kill()
 	if err != nil {
 		fmt.Println("Error killing process", err.Error())
@@ -46,7 +48,7 @@ func releaseProcess(process *os.Process) bool {
 	return true
 }
 
-func startProcess(args []string, dir string) (*os.Process, error) {
+func startProcess(args []string, dir string) (*process.Process, error) {
 	cmd := exec.Command(args[0], args[1:]...)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
@@ -57,7 +59,12 @@ func startProcess(args []string, dir string) (*os.Process, error) {
 		fmt.Println(cmd.Err)
 		return nil, err
 	}
-	return cmd.Process, nil
+	process, err := process.NewProcess(int32(cmd.Process.Pid))
+	if err != nil {
+		fmt.Println("Error getting process", err.Error())
+		return nil, err
+	}
+	return process, nil
 }
 
 func RunFromString(cmdString string) error {

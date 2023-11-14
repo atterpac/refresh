@@ -16,6 +16,7 @@ func (i *Ignore) CheckIgnore(path string) bool {
 	_, isFile := i.File[path]
 	_, isExt := i.Extension[path]
 
+	// If any are true ignore
 	return (isDir && isDirectory(path)) || isFile || isExt
 }
 

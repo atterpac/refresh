@@ -5,12 +5,12 @@ label = "My Project"
 root_path = "../testProject"
 # Runs prior to the exec command starting
 pre_exec = ""
-exec_command = "go build main.go"
+exec_command = "go run main.go"
 # Runs when a file reload is triggered after killing the previous process
 post_exec = ""
 # debug | info | warn | error | fatal
 # Defaults to Info if not provided
-log_level = "info" 
+log_level = "debug" 
 
 # Sets what files the watcher should ignore
 [config.ignore]

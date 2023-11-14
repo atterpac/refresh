@@ -7,10 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/rjeczalik/notify"
+	"github.com/shirou/gopsutil/process"
 )
 
 type Engine struct {
-	Process     *os.Process
+	Process     *process.Process
 	Active      bool
 	Config      Config          `toml:"config"`
 	ColorScheme log.ColorScheme `toml:"color_scheme"`
