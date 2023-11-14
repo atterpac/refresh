@@ -1,13 +1,18 @@
 [config]
 label = "My Project"
+# Relative to this files location
 root_path = "../testProject"
+# Will be split into string array for command ["go", "run", "main.go"]
 exec_command = "go run main.go"
+# TODO: Ignore files by extension
+# TODO: Breakout into ignore_files and ignore_dirs
 ignore = ["newfile.go"]
 log_level = "info"
 
+# TODO: Know better colors
 [color_scheme]
-info = "#00ff00"
-warn = "#ffff00"
-error = "#ff0000"
-debug = "#0000ff"
-fatal = "#ff0000"
+debug = "#87CEEB"  # Sky Blue
+info = "#98FB98"   # Pale Green
+warn = "#FFD700"   # Gold
+error = "#FFA07A"  # Light Salmon
+fatal = "#FF6347"  # Tomato

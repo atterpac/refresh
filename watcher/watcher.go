@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/rjeczalik/notify"
 )
 
@@ -21,6 +20,8 @@ type Engine struct {
 }
 
 type Config struct {
+	IsFile      bool     `toml:"-"`
+	Path        string   `toml:"config_path"`
 	Label       string   `toml:"label"`
 	RootPath    string   `toml:"root_path"`
 	ExecCommand string   `toml:"exec_command"`
@@ -28,19 +29,31 @@ type Config struct {
 	LogLevel    string   `toml:"log_level"`
 }
 
-func NewWatcherFromConfig(confPath string) *Engine {
-	conf := Engine{}
-	conf.readConfigFile(confPath)
-	return &conf
-}
-
 func (engine *Engine) Start() {
-	styles := setColorScheme(engine.ColorScheme)
-	engine.readConfigFile("./gotato.toml")
-	engine.Log = log.NewStyledLogger(styles, engine.GetLogLevel())
-	engine.Log.Info(fmt.Sprintf("Color Scheme %s", engine.ColorScheme))
 	engine.Log.Info(fmt.Sprintf("Starting Watcher for %s", engine.Config.Label))
 	engine.Monitor()
+}
+
+func NewWatcher(rootPath, execCommand, label, logLevel string, ignoreList []string, colors log.ColorScheme) *Engine {
+	engine := Engine{}
+	engine.Log = log.NewStyledLogger(engine.ColorScheme, engine.GetLogLevel())
+	engine.Config = Config{
+		RootPath:    rootPath,
+		ExecCommand: execCommand,
+		Label:       label,
+		LogLevel:    logLevel,
+		IgnoreList:  ignoreList,
+	}
+	engine.verifyConfig()
+	return &engine
+}
+
+func NewWatcherFromConfig(confPath string) *Engine {
+	engine := Engine{}
+	engine.readConfigFile(confPath)
+	engine.Log = log.NewStyledLogger(engine.ColorScheme, engine.GetLogLevel())
+	engine.verifyConfig()
+	return &engine
 }
 
 func (engine *Engine) GetLogLevel() int {
@@ -61,11 +74,30 @@ func (engine *Engine) GetLogLevel() int {
 }
 
 func (engine *Engine) readConfigFile(path string) *Engine {
+	fmt.Println("Reading Config File", engine.Config.Path)
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
-		fmt.Println(err)
+		fmt.Println("Error reading config file")
+		fmt.Println(err.Error())
+		os.Exit(1)
 	}
-	fmt.Println("Config", engine.Config)
 	return engine
+}
+
+func (engine *Engine) verifyConfig() {
+	engine.Log.Debug("Verifying Config")
+	config := engine.Config
+	engine.Log.Debug(fmt.Sprintf("Config: %+v", config))
+	if config.RootPath == "" {
+		engine.Log.Fatal("ERROR: Root Path not set")
+		os.Exit(1)
+	}
+	if config.ExecCommand == "" {
+		engine.Log.Fatal("ERROR: Exec Command not set")
+		os.Exit(1)
+	}
+	if config.Label == "" {
+		engine.Log.Warn("Label not set")
+	}
 }
 
 type EventInfo struct {
@@ -73,40 +105,18 @@ type EventInfo struct {
 	Reload bool
 }
 
-func setColorScheme(scheme log.ColorScheme) log.LogStyles {
-	styles := log.LogStyles{}
-	styles.Debug = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Debug))
-	styles.Info = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Info))
-	styles.Warn = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Warn))
-	styles.Error = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Error))
-	styles.Fatal = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Fatal)).Bold(true)
-	return styles
-}
-
 // Top level function that takes in a WatchEngine and starts a goroutine with its out fsnotify.Watcher and ruleset
 func (engine *Engine) Monitor() {
 	// Start Exec Command
-	if len(engine.Config.ExecCommand) == 0 {
-		engine.Log.Fatal("No Exec Command Provided")
-	}
 	engine.Process = Reload(*engine)
 	// Create Channel for Events
 	e := make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
-	if err := notify.Watch(engine.Config.RootPath, e, notify.All); err != nil {
+	if err := notify.Watch(engine.Config.RootPath+"/...", e, notify.All); err != nil {
 		engine.Log.Error("Error creating watcher", err.Error())
 	}
 	defer notify.Stop(e)
 	watchEvents(engine, e)
-}
-
-func containsIgnore(ignore []string, path string) bool {
-	for _, ignorePath := range ignore {
-		if path == ignorePath || filepath.Base(path) == ignorePath {
-			return true
-		}
-	}
-	return false
 }
 
 func watchEvents(engine *Engine, e chan notify.EventInfo) {
@@ -122,10 +132,45 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			continue
 		}
 
-		engine.Log.Info(fmt.Sprintf("Event: %s", eventInfo.Name))
+		engine.Log.Debug(fmt.Sprintf("Event: %s | %s", eventInfo.Name, ei.Path()))
 		if eventInfo.Reload {
-			engine.Log.Info("Reloading")
+			relPath := getPath(engine.Log, ei.Path())
+			engine.Log.Info(fmt.Sprintf("File Modified: %s", relPath))
+			engine.Log.Info("Reloading...")
 			engine.Process = Reload(*engine)
 		}
 	}
+}
+
+func containsIgnore(ignore []string, path string) bool {
+	for _, ignorePath := range ignore {
+		if path == ignorePath || filepath.Base(path) == ignorePath {
+			return true
+		}
+	}
+	return false
+}
+
+
+func getPath(log log.Logger, path string) string {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Error(fmt.Sprintf("Error getting working directory: %s", err.Error()))
+		return ""
+	}
+	relPath, err := stripCurrentDirectory(path, wd)
+	if err != nil {
+		log.Error(fmt.Sprintf("Error stripping current directory: %s", err.Error()))
+		return ""
+	}
+	return relPath
+}
+
+func stripCurrentDirectory(fullPath, currentDirectory string) (string, error) {
+	relativePath, err := filepath.Rel(currentDirectory, fullPath)
+	if err != nil {
+		return "", err
+	}
+
+	return relativePath, nil
 }

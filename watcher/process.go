@@ -9,24 +9,32 @@ import (
 
 //TODO: Pipe stdout from process into the watch engine or the logs
 func Reload(engine Engine) *os.Process {
-	releaseProcess(engine.Process)
+	ok := releaseProcess(engine.Process)
+	if !ok {
+		engine.Log.Fatal("Error releasing process")
+		os.Exit(1)
+	}
+
 	cmd := generateExec(engine.Config.ExecCommand)
 	process, err := startProcess(cmd, engine.Config.RootPath)
 	if err != nil {
 		fmt.Println("Error starting process")
-		return nil
+		engine.Log.Fatal(err.Error())
+		os.Exit(1)
 	}
 	return process
 }
 
 
-func releaseProcess(process *os.Process) {
+func releaseProcess(process *os.Process) bool {
 	if process != nil {	
 		err := process.Kill()
 		if err != nil {
 			fmt.Println("Error killing process", err.Error())
+			return false
 		}
 	}
+	return true
 }
 
 func startProcess(args []string, dir string) (*os.Process, error) {

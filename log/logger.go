@@ -44,7 +44,8 @@ const (
 	FatalLevel
 )
 
-func NewStyledLogger(styles LogStyles, level int) *StyledLogger {
+func NewStyledLogger(scheme ColorScheme, level int) *StyledLogger {
+	styles := setColorScheme(scheme)
 	return &StyledLogger{styles, level}
 }
 
@@ -109,12 +110,18 @@ func applyStyle(message string, style lipgloss.Style) string {
 	return styledMessage
 }
 
-func CreateStyles(debug string, info string, warn string, err string, fatal string) LogStyles {
-	return LogStyles{
-		Debug: lipgloss.NewStyle().Foreground(lipgloss.Color(debug)),
-		Info:  lipgloss.NewStyle().Foreground(lipgloss.Color(info)),
-		Warn:  lipgloss.NewStyle().Foreground(lipgloss.Color(warn)),
-		Error: lipgloss.NewStyle().Foreground(lipgloss.Color(err)),
-		Fatal: lipgloss.NewStyle().Foreground(lipgloss.Color(fatal)),
-	}
+func setColorScheme(scheme ColorScheme) LogStyles {
+	styles := LogStyles{}
+	styles.Debug = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Debug))
+	styles.Info = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Info))
+	styles.Warn = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Warn))
+	styles.Error = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Error))
+	styles.Fatal = lipgloss.NewStyle().
+	// Hex for a dark gray color 
+		Foreground(lipgloss.Color(scheme.Error)).
+		Border(lipgloss.RoundedBorder()).
+		Align(lipgloss.Center).
+		Bold(true).
+		Width(60)
+	return styles
 }
