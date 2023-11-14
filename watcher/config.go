@@ -24,6 +24,8 @@ func (engine *Engine) readConfigFile(path string) *Engine {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
+	engine.Config.IsFile = true
+
 	return engine
 }
 
@@ -42,3 +44,4 @@ func (engine *Engine) verifyConfig() {
 		engine.Log.Warn("Label not set")
 	}
 }
+

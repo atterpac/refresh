@@ -44,9 +44,9 @@ func main() {
 			Fatal: "#771111",
 		}
 		ignore := watcher.Ignore{
-			File:      strings.Split(ignoreFile, ","),
-			Dir:       strings.Split(ignoreDir, ","),
-			Extension: strings.Split(ignoreExt, ","),
+			File:      stringSliceToMap(strings.Split(ignoreFile, ",")),
+			Dir:       stringSliceToMap(strings.Split(ignoreDir, ",")),
+			Extension: stringSliceToMap(strings.Split(ignoreExt, ",")),
 		}
 		// Root | Exec | Label | LogLevel | IgnoreList | Colors as log.ColorScheme
 		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors)
@@ -56,3 +56,12 @@ func main() {
 	watch.Start()
 	<-make(chan struct{})
 }
+
+func stringSliceToMap(slice []string) map[string]bool {
+	m := make(map[string]bool)
+	for _, v := range slice {
+		m[v] = true
+	}
+	return m
+}
+

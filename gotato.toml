@@ -2,10 +2,10 @@
 # Just used in the TUI not required
 label = "My Project"
 # Relative to this files location
-root_path = "../testProject" # Required
+root_path = "../testProject"
 # Runs prior to the exec command starting
 pre_exec = ""
-exec_command = "go build main.go" # Required
+exec_command = "go build main.go"
 # Runs when a file reload is triggered after killing the previous process
 post_exec = ""
 # debug | info | warn | error | fatal

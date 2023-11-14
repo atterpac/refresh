@@ -77,7 +77,6 @@ func (engine *Engine) Monitor() {
 		engine.Log.Error("Error creating watcher", err.Error())
 	}
 	defer notify.Stop(e)
-	engine.Log.Info(fmt.Sprintf("Ignoring %s", engine.Config.Ignore))
 	watchEvents(engine, e)
 }
 
