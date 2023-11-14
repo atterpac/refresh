@@ -16,3 +16,10 @@ info = "#98FB98"   # Pale Green
 warn = "#FFD700"   # Gold
 error = "#FFA07A"  # Light Salmon
 fatal = "#FF6347"  # Tomato
+
+# TODO: Implement something like this for ignore
+#[ignore]
+#dir = [".git", "node_modules"]
+#files = [".DS_Store", ".gitignore", ".gitkeep"]
+#types = [".db, .sqlite"]
+
