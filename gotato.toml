@@ -1,16 +1,27 @@
-#TODO Add config for commands to run prior to exec_command
-#TODO Add config for commands to run after exec_command
 [config]
+# Just used in the TUI not required
 label = "My Project"
 # Relative to this files location
-root_path = "../testProject"
-# Will be split into string array for command ["go", "run", "main.go"]
+root_path = "../testProject" # Required
+# Runs prior to the exec command starting
 pre_exec = ""
-exec_command = "go build main.go"
+exec_command = "go build main.go" # Required
+# Runs when a file reload is triggered after killing the previous process
 post_exec = ""
 # debug | info | warn | error | fatal
-log_level = "info"
+# Defaults to Info if not provided
+log_level = "info" 
 
+# Sets what files the watcher should ignore
+[config.ignore]
+# Directories to ignore
+dir = [".git", "node_modules"]
+# Files to ignore
+file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
+# File extensions to ignore
+extension = [".db", ".sqlite"]
+
+# Sets logging color scheme
 [color_scheme]
 debug = "#87CEEB"  # Sky Blue
 info = "#98FB98"   # Pale Green
@@ -18,7 +29,3 @@ warn = "#FFD700"   # Gold
 error = "#FFA07A"  # Light Salmon
 fatal = "#FF6347"  # Tomato
 
-[config.ignore]
-dir = [".git", "node_modules"]
-file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
-extension = [".db", ".sqlite"]
