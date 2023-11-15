@@ -5,6 +5,7 @@ import (
 	"gotato/log"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/rjeczalik/notify"
 	"github.com/shirou/gopsutil/process"
@@ -82,8 +83,15 @@ func (engine *Engine) Monitor() {
 }
 
 func watchEvents(engine *Engine, e chan notify.EventInfo) {
+	var debounceTime time.Time
+	var debounceThreshold = 2 * time.Second
 	for {
 		ei := <-e
+		if time.Now().After(debounceTime.Add(debounceThreshold)) {
+			debounceTime = time.Now()
+		} else {
+			continue
+		}
 		if engine.Config.Ignore.CheckIgnore(ei.Path()) {
 			continue
 		}

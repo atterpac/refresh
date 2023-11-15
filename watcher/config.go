@@ -31,7 +31,6 @@ func (engine *Engine) readConfigFile(path string) *Engine {
 
 func (engine *Engine) verifyConfig() {
 	engine.Log.Debug("Verifying Config")
-	engine.Log.Debug(fmt.Sprintf("Config: %+v", engine))
 	if engine.Config.RootPath == "" {
 		engine.Log.Fatal("ERROR: Root Path not set")
 		os.Exit(1)
@@ -43,5 +42,6 @@ func (engine *Engine) verifyConfig() {
 	if engine.Config.Label == "" {
 		engine.Log.Warn("Label not set")
 	}
+	engine.Log.Debug("Config Verified")
 }
 

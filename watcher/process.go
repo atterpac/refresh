@@ -17,7 +17,7 @@ func Reload(engine Engine) *process.Process {
 		ok := releaseProcess(engine.Process)
 		if !ok {
 			engine.Log.Fatal("Error releasing process: %s")
-			os.Exit(1)
+			return nil
 		}
 		// Post Exec
 		err := RunFromString(engine.Config.PostExec)
@@ -96,14 +96,14 @@ func generateExec(cmd string) []string {
 }
 
 func (engine *Engine) isRunning() bool {
-	return engine.Process != nil
+	if engine.Process == nil {
+		return false
+	}
+	_, err := os.FindProcess(int(engine.Process.Pid))
+	return err == nil
 }
 
 func killWindows(pid int) error {
-	kill  := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", pid))
-	err := kill.Run()
-	if err != nil {
-		return err
-	}
-	return nil
+	err := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", pid)).Run()
+	return err
 }

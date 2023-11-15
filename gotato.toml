@@ -10,7 +10,7 @@ exec_command = "go run main.go"
 post_exec = ""
 # debug | info | warn | error | fatal
 # Defaults to Info if not provided
-log_level = "debug" 
+log_level = "info" 
 
 # Sets what files the watcher should ignore
 [config.ignore]
