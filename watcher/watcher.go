@@ -30,7 +30,7 @@ func (engine *Engine) Start() {
 	engine.Monitor()
 }
 
-func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, colors log.ColorScheme) *Engine {
+func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, colors log.ColorScheme, debounce int) *Engine {
 	engine := Engine{}
 	engine.Log = log.NewStyledLogger(engine.ColorScheme, engine.GetLogLevel())
 	engine.Config = Config{
@@ -39,6 +39,7 @@ func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, co
 		Label:       label,
 		LogLevel:    logLevel,
 		Ignore:      ignore,
+		Debounce:    debounce,
 	}
 	engine.verifyConfig()
 	return &engine
@@ -84,26 +85,29 @@ func (engine *Engine) Monitor() {
 
 func watchEvents(engine *Engine, e chan notify.EventInfo) {
 	var debounceTime time.Time
-	var debounceThreshold = 2 * time.Second
+	var debounceThreshold = time.Duration(engine.Config.Debounce) * time.Millisecond
 	for {
 		ei := <-e
-		engine.Log.Debug(fmt.Sprintf("Event: %s | %s", ei.Event(), ei.Path()))
-		if time.Now().After(debounceTime.Add(debounceThreshold)) {
-			debounceTime = time.Now()
-		} else {
-			continue
-		}
-		if engine.Config.Ignore.CheckIgnore(ei.Path()) {
-			continue
-		}
-
 		eventInfo, ok := eventMap[ei.Event()]
 		if !ok {
 			engine.Log.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
 			continue
 		}
-
 		if eventInfo.Reload {
+			// Check if file should be ignored
+			if engine.Config.Ignore.CheckIgnore(ei.Path()) {
+				engine.Log.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String() ,ei.Path()))
+				continue
+			}
+			// Check if we should debounce
+			if checkDebounce(debounceTime, debounceThreshold ) {
+				debounceTime = time.Now()
+				engine.Log.Debug(fmt.Sprintf("Debounce Timer Start: %v", debounceTime))
+			} else {
+				engine.Log.Debug(fmt.Sprintf("Debouncing file change: %s", ei.Path()))
+				continue
+			}
+			// Continue with reload
 			relPath := getPath(engine.Log, ei.Path())
 			engine.Log.Info(fmt.Sprintf("File Modified: %s", relPath))
 			engine.Log.Info("Reloading...")
@@ -133,4 +137,8 @@ func stripCurrentDirectory(fullPath, currentDirectory string) (string, error) {
 	}
 
 	return relativePath, nil
+}
+
+func checkDebounce(debounceTime time.Time, debounceThreshold time.Duration) bool {
+	return time.Now().After(debounceTime.Add(debounceThreshold)) 
 }

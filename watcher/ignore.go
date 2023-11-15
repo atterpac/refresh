@@ -2,7 +2,8 @@ package watcher
 
 import (
 	"fmt"
-	"os"
+	"path/filepath"
+	"strings"
 )
 
 type Ignore struct {
@@ -11,21 +12,29 @@ type Ignore struct {
 	Extension map[string]bool `toml:"extension"`
 }
 
+// Runs all ignore checks to decide if reload should happen
 func (i *Ignore) CheckIgnore(path string) bool {
-	_, isDir := i.Dir[path]
-	_, isFile := i.File[path]
+	basePath := filepath.Base(path)
+	_, isFile := i.File[basePath]
 	_, isExt := i.Extension[path]
-
 	// If any are true ignore
-	return (isDir && isDirectory(path)) || isFile || isExt
+	return isIgnoreDir(path, i.Dir) || isFile || isExt || isTmp(basePath)
 }
 
-func isDirectory(path string) bool {
-	pathInfo, err := os.Stat(path)
-	if err != nil {
-		return false
+// Checks if filepath ends in tilde returns true if it does
+func isTmp(path string) bool {
+	return len(path) > 0 && path[len(path)-1] == '~'
+}
+
+// Checks if path contains any directories in the ignore directory config
+func isIgnoreDir(path string, Dirmap map[string]bool) bool {
+	dirs := strings.Split(path, string(filepath.Separator))
+	for _, dir := range dirs {
+		if Dirmap[dir] {
+			return true
+		}
 	}
-	return pathInfo.IsDir()
+	return false
 }
 
 // Custom Unmarshal to stuff data into maps
@@ -61,4 +70,3 @@ func (i *Ignore) UnmarshalTOML(data interface{}) error {
 
 	return nil
 }
-

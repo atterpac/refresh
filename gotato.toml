@@ -5,17 +5,19 @@ label = "My Project"
 root_path = "../testProject"
 # Runs prior to the exec command starting
 pre_exec = ""
+# Command to run on reload
 exec_command = "go run main.go"
 # Runs when a file reload is triggered after killing the previous process
 post_exec = ""
 # debug | info | warn | error | fatal
 # Defaults to Info if not provided
 log_level = "debug" 
-
+# Debounce setting for ignoring reptitive file system notifications
+debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
 [config.ignore]
 # Directories to ignore
-dir = [".git", "node_modules"]
+dir = [".git", "node_modules", "newdir"]
 # Files to ignore
 file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
 # File extensions to ignore

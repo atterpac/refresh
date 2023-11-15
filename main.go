@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"gotato/log"
 	"gotato/tui"
 	"gotato/watcher"
+	"os"
+	"strconv"
 	"strings"
 )
 
@@ -14,6 +17,7 @@ func main() {
 	var execCommand string
 	var logLevel string
 	var configPath string
+	var debounce string
 	var watch *watcher.Engine
 
 	// Ignore
@@ -30,6 +34,7 @@ func main() {
 	flag.StringVar(&ignoreDir, "id", "", "Ignore Directory list as comma-separated list")
 	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
 	flag.StringVar(&ignoreExt, "ie", "", "Ignore Extension list as comma-separated list")
+	flag.StringVar(&debounce, "d", "1000", "Debounce time in milliseconds")
 	flag.Parse()
 
 	// TODO: Make file config able to be overridden by cli
@@ -48,8 +53,15 @@ func main() {
 			Dir:       stringSliceToMap(strings.Split(ignoreDir, ",")),
 			Extension: stringSliceToMap(strings.Split(ignoreExt, ",")),
 		}
-		// Root | Exec | Label | LogLevel | IgnoreList | Colors as log.ColorScheme
-		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors)
+
+		debounceThreshold, err := strconv.Atoi(debounce)
+		if err != nil {
+			fmt.Println("Error converting debounce to int")
+			os.Exit(1)
+		}
+		// Root | Exec | Label | LogLevel | IgnoreList | Colors as log.ColorScheme | Debounce
+		// Debounce string to int
+		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors, debounceThreshold)
 	}
 
 	tui.Banner("Gotato v0.0.1")

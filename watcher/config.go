@@ -16,8 +16,10 @@ type Config struct {
 	PostExec    string `toml:"post_exec"`
 	Ignore      Ignore `toml:"ignore"`
 	LogLevel    string `toml:"log_level"`
+	Debounce    int    `toml:"debounce"`
 }
 
+// Reads a config.toml file and returns the engine
 func (engine *Engine) readConfigFile(path string) *Engine {
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
 		fmt.Println("Error reading config file")
@@ -29,6 +31,7 @@ func (engine *Engine) readConfigFile(path string) *Engine {
 	return engine
 }
 
+//  Verify required data is present in config
 func (engine *Engine) verifyConfig() {
 	engine.Log.Debug("Verifying Config")
 	if engine.Config.RootPath == "" {
