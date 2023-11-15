@@ -87,6 +87,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 	var debounceThreshold = 2 * time.Second
 	for {
 		ei := <-e
+		engine.Log.Debug(fmt.Sprintf("Event: %s | %s", ei.Event(), ei.Path()))
 		if time.Now().After(debounceTime.Add(debounceThreshold)) {
 			debounceTime = time.Now()
 		} else {
@@ -102,7 +103,6 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			continue
 		}
 
-		engine.Log.Debug(fmt.Sprintf("Event: %s | %s", eventInfo.Name, ei.Path()))
 		if eventInfo.Reload {
 			relPath := getPath(engine.Log, ei.Path())
 			engine.Log.Info(fmt.Sprintf("File Modified: %s", relPath))
