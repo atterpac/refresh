@@ -7,10 +7,10 @@ import (
 
 func main() {
 	for i := 0; i < 100; i++ {
-		fmt.Println("Hello Update :) # ", i)
+		fmt.Println("Goodbye Update :) # ", i)
 		time.Sleep(1 * time.Second)
 		// new Stuff
-
+		// New tingfs
 	}
 }
 

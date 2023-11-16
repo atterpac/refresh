@@ -22,12 +22,10 @@ func NewTui(color log.ColorScheme, logLevel int) (log.Logger, log.Logger) {
 		Warn:  "",
 		Fatal: "",
 	}
-	process := log.NewStyledLogger(processArea ,processColors, logLevel)
+	process := log.NewStyledLogger(processArea, processColors, logLevel)
 	logger := log.NewStyledLogger(logArea, color, logLevel)
-	Banner("Gotato v0.0.1")
 	return process, logger
 }
-
 
 func Banner(text string) {
 	banner := lipgloss.NewStyle().
@@ -47,8 +45,13 @@ func PrintSubProcess(logger log.Logger, pipe io.ReadCloser, chunkSize int) {
 	styled := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		Width(60).
-		Height(chunkSize).
+		Height(chunkSize+1).
 		Padding(0, 1)
+
+	centerText := lipgloss.NewStyle().
+		Align(lipgloss.Center).
+		Width(60).
+		Height(1)
 
 	for {
 		for scanner.Scan() {
@@ -60,7 +63,8 @@ func PrintSubProcess(logger log.Logger, pipe io.ReadCloser, chunkSize int) {
 			} else {
 				lineString = strings.Join(lines, "")
 			}
-			logger.Info(styled.Render(lineString))
+			combine := centerText.Render("Gotato V0.1")
+			logger.Info(styled.Render(combine + "\n" + lineString))
 		}
 
 	}

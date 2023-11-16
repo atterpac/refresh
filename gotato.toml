@@ -12,7 +12,9 @@ post_exec = ""
 # debug | info | warn | error | fatal
 # Defaults to Info if not provided
 log_level = "info" 
-log_chunk = 10 # Number of lines to show in the TUI
+# Number of lines to show in TUI
+# Line count in terminal will be 1+ this number due to the scanner keeping a clear line on bottom
+log_chunk = 20 # Number of lines to show in the TUI
 # Debounce setting for ignoring reptitive file system notifications
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore

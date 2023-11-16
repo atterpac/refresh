@@ -14,6 +14,8 @@ type Logger interface {
 	Warn(format string, args ...interface{})
 	Error(format string, args ...interface{})
 	Fatal(format string, args ...interface{})
+	DebugString(format string, args ...interface{}) string
+	InfoString(format string, args ...interface{}) string
 }
 
 type LogStyles struct {
@@ -34,7 +36,7 @@ type ColorScheme struct {
 
 type StyledLogger struct {
 	area 	     *pterm.AreaPrinter
-	styles       LogStyles
+	Styles       LogStyles
 	loggingLevel int
 }
 
@@ -57,14 +59,14 @@ func NewStyledLogger(area *pterm.AreaPrinter, scheme ColorScheme, level int) *St
 
 func (l *StyledLogger) Debug(format string, args ...interface{}) {
 	if l.loggingLevel <= DebugLevel {
-		l.log(l.styles.Debug, format,args...)
+		l.log(l.Styles.Debug, format,args...)
 	}
 }
 
 func (l *StyledLogger) DebugString(format string, args ...interface{}) string {
 	if l.loggingLevel <= DebugLevel {
 		message := fmt.Sprintf(format, args...)
-		styledMessage := applyStyle(message, l.styles.Debug)
+		styledMessage := applyStyle(message, l.Styles.Debug)
 		return styledMessage
 	}
 	return ""
@@ -72,14 +74,14 @@ func (l *StyledLogger) DebugString(format string, args ...interface{}) string {
 
 func (l *StyledLogger) Info(format string, args ...interface{}) {
 	if l.loggingLevel <= InfoLevel {
-		l.log(l.styles.Info, format ,args...)
+		l.log(l.Styles.Info, format ,args...)
 	}
 }
 
 func (l *StyledLogger) InfoString(format string, args ...interface{}) string {
 	if l.loggingLevel <= InfoLevel {
 		message := fmt.Sprintf(format, args...)
-		styledMessage := applyStyle(message, l.styles.Info)
+		styledMessage := applyStyle(message, l.Styles.Info)
 		return styledMessage
 	}
 	return ""
@@ -87,19 +89,19 @@ func (l *StyledLogger) InfoString(format string, args ...interface{}) string {
 
 func (l *StyledLogger) Warn(format string, args ...interface{}) {
 	if l.loggingLevel <= WarnLevel {
-		l.log(l.styles.Warn, format ,args...)
+		l.log(l.Styles.Warn, format ,args...)
 	}
 }
 
 func (l *StyledLogger) Error(format string, args ...interface{}) {
 	if l.loggingLevel <= ErrorLevel {
-		l.log(l.styles.Error, format ,args...)
+		l.log(l.Styles.Error, format ,args...)
 	}
 }
 
 func (l *StyledLogger) Fatal(format string, args ...interface{}) {
 	if l.loggingLevel <= FatalLevel {
-		l.log(l.styles.Fatal, format,args...)
+		l.log(l.Styles.Fatal, format,args...)
 	}
 	os.Exit(1)
 }
@@ -107,6 +109,7 @@ func (l *StyledLogger) Fatal(format string, args ...interface{}) {
 func (l *StyledLogger) log(style lipgloss.Style, format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	styledMessage := applyStyle(message, style)
+	// Add to appropiate channel
 	l.area.Update(styledMessage)
 }
 
@@ -125,7 +128,7 @@ func (l *StyledLogger) SetLoggingLevel(level int) {
 }
 
 func (l *StyledLogger) SetColorScheme(scheme LogStyles) {
-	l.styles = scheme
+	l.Styles = scheme
 }
 
 func applyStyle(message string, style lipgloss.Style) string {
