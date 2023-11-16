@@ -14,11 +14,23 @@ type Ignore struct {
 
 // Runs all ignore checks to decide if reload should happen
 func (i *Ignore) CheckIgnore(path string) bool {
+	var dir, file, ext bool = false, false, false
 	basePath := filepath.Base(path)
-	_, isFile := i.File[basePath]
-	_, isExt := i.Extension[path]
-	// If any are true ignore
-	return isIgnoreDir(path, i.Dir) || isFile || isExt || isTmp(basePath)
+	if !isMapEmpty(i.Dir) {
+		dir = isIgnoreDir(path, i.Dir)
+	}
+	if !isMapEmpty(i.File) {
+		_, file = i.File[basePath]
+	}
+	if !isMapEmpty(i.Extension) {
+		_, ext = i.Extension[path]
+	}
+
+	return dir || file || ext || isTmp(basePath)
+}
+
+func isMapEmpty(m map[string]bool) bool {
+	return len(m) <= 1
 }
 
 // Checks if filepath ends in tilde returns true if it does

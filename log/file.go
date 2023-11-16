@@ -40,23 +40,16 @@ func joinLines(lines []string) string {
 }
 
 func DeleteTempFile(filePath string) bool {
-	log := GetLogger()
-	log.Debug(fmt.Sprintf("Deleting file %s", filePath))
 	// Check if the file exists
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		log.Debug(fmt.Sprintf("File %s does not exist.\n", filePath))
 		return true
 	} else if err != nil {
 		return false
 	}
 	// Delete the file
 	err = os.Remove(filePath)
-	if err != nil {
-		log.Debug(fmt.Sprintf("Error deleting file %s", filePath))
-		return false
-	}
-	return true
+	return err == nil
 }
 
 

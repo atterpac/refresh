@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"gotato/log"
-	"gotato/tui"
 	"gotato/watcher"
 	"os"
 	"strconv"
@@ -42,9 +41,8 @@ func main() {
 	flag.Parse()
 
 	// TODO: Make file config able to be overridden by cli
-	tui.Banner("Gotato v0.0.1")
 	if len(configPath) != 0 {
-		watch = watcher.NewWatcherFromConfig(configPath)
+		watch = watcher.NewEngineFromConfig(configPath)
 	} else {
 		colors := log.ColorScheme{
 			Info:  "#ccff33",
@@ -66,7 +64,7 @@ func main() {
 		}
 		// Root | Exec | Label | LogLevel | IgnoreList | Colors as log.ColorScheme | Debounce
 		// Debounce string to int
-		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors, debounceThreshold, chunkSize)
+		watch = watcher.NewEngine(rootPath, execCommand, "", logLevel, ignore, colors, debounceThreshold, chunkSize)
 	}
 
 	watch.Start()

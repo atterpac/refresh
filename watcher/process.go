@@ -9,7 +9,6 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pterm/pterm"
 	"github.com/shirou/gopsutil/process"
 )
 
@@ -28,13 +27,13 @@ func (engine *Engine)Reload() *process.Process {
 			engine.Log.Fatal(fmt.Sprintf("Error running post-exec command: %s", err.Error()))
 			os.Exit(1)
 		}
-		if engine.LogFile != nil {
-			log.DeleteTempFile(engine.LogFile.Name())
+		if engine.ProcessLog != nil {
+			log.DeleteTempFile(engine.ProcessLogFile.Name())
 		}
-		if engine.LogPipe != nil {
+		if engine.ProcessLogPipe != nil {
 			engine.Log.Debug("Closing log pipe")
-			engine.LogPipe.Close()
-			engine.LogPipe = nil
+			engine.ProcessLogPipe.Close()
+			engine.ProcessLogPipe = nil
 		}
 	}
 	// Pre-Process Exec
@@ -64,15 +63,13 @@ func (engine *Engine) startProcess() (*process.Process, error) {
 	defer logFile.Close()
 
 	cmd.Stderr = logFile
-	engine.LogFile = logFile
-	engine.LogPipe, err = cmd.StdoutPipe()
+	engine.ProcessLogFile = logFile
+	engine.ProcessLogPipe, err = cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println("Error getting stdout pipe", err.Error())
 		return nil, err
 	}
-	area, _ := pterm.DefaultArea.Start()
-	defer area.Stop()
-	go tui.PrintSubProcess(area, engine.LogPipe, engine.Config.LogChunk)
+	go tui.PrintSubProcess(engine.ProcessLog, engine.ProcessLogPipe, engine.Config.LogChunk)
 
 	err = cmd.Start()
 	if err != nil {

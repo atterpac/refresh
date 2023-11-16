@@ -2,12 +2,32 @@ package tui
 
 import (
 	"bufio"
+	"gotato/log"
 	"io"
 	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/pterm/pterm"
 )
+
+func NewTui(color log.ColorScheme, logLevel int) (log.Logger, log.Logger) {
+	processArea, _ := pterm.DefaultArea.Start()
+	defer pterm.DefaultArea.Stop()
+	logArea, _ := pterm.DefaultArea.Start()
+	defer pterm.DefaultArea.Stop()
+	processColors := log.ColorScheme{
+		Info:  "",
+		Debug: "",
+		Error: "",
+		Warn:  "",
+		Fatal: "",
+	}
+	process := log.NewStyledLogger(processArea ,processColors, logLevel)
+	logger := log.NewStyledLogger(logArea, color, logLevel)
+	Banner("Gotato v0.0.1")
+	return process, logger
+}
+
 
 func Banner(text string) {
 	banner := lipgloss.NewStyle().
@@ -20,7 +40,7 @@ func Banner(text string) {
 	pterm.Println(banner.Render(text))
 }
 
-func PrintSubProcess(area *pterm.AreaPrinter ,pipe io.ReadCloser, chunkSize int) {
+func PrintSubProcess(logger log.Logger, pipe io.ReadCloser, chunkSize int) {
 	scanner := bufio.NewScanner(pipe)
 	var lines []string
 
@@ -40,7 +60,7 @@ func PrintSubProcess(area *pterm.AreaPrinter ,pipe io.ReadCloser, chunkSize int)
 			} else {
 				lineString = strings.Join(lines, "")
 			}
-			area.Update(styled.Render(lineString))
+			logger.Info(styled.Render(lineString))
 		}
 
 	}

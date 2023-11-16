@@ -3,6 +3,7 @@ package watcher
 import (
 	"fmt"
 	"gotato/log"
+	"gotato/tui"
 	"io"
 	"os"
 	"path/filepath"
@@ -14,13 +15,14 @@ import (
 )
 
 type Engine struct {
-	Process     *process.Process
-	Active      bool
-	Config      Config          `toml:"config"`
-	ColorScheme log.ColorScheme `toml:"color_scheme"`
-	Log         log.Logger
-	LogFile     *os.File
-	LogPipe     io.ReadCloser
+	Process        *process.Process
+	Active         bool
+	Config         Config          `toml:"config"`
+	ColorScheme    log.ColorScheme `toml:"color_scheme"`
+	Log            log.Logger
+	ProcessLog     log.Logger
+	ProcessLogFile *os.File
+	ProcessLogPipe io.ReadCloser
 }
 
 type EventInfo struct {
@@ -29,17 +31,16 @@ type EventInfo struct {
 }
 
 func (engine *Engine) Start() {
-	engine.Log.Info(fmt.Sprintf("Starting Watcher for %s", engine.Config.Label))
 	err := log.ClearTmpFolders()
 	if err != nil {
-		engine.Log.Error(fmt.Sprintf("Error clearing tmp folders: %s", err.Error()))
+		engine.Log.Error("Error clearing tmp folders: %s", err.Error())
 	}
 	engine.Monitor()
 }
 
-func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, colors log.ColorScheme, debounce int, chunkSize string) *Engine {
+func NewEngine(rootPath, execCommand, label, logLevel string, ignore Ignore, colors log.ColorScheme, debounce int, chunkSize string) *Engine {
 	engine := Engine{}
-	engine.Log = log.NewStyledLogger(engine.ColorScheme, engine.GetLogLevel())
+	engine.ProcessLog, engine.Log = tui.NewTui(colors, engine.GetLogLevel())
 	chunk, err := strconv.Atoi(chunkSize)
 	if err != nil {
 		engine.Log.Error(fmt.Sprintf("Error converting chunk size to int: %s", err.Error()))
@@ -47,21 +48,20 @@ func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, co
 	engine.Config = Config{
 		RootPath:    rootPath,
 		ExecCommand: execCommand,
-		Label:       label,
+		Label:       "mylabel",
 		LogLevel:    logLevel,
 		LogChunk:    chunk,
 		Ignore:      ignore,
 		Debounce:    debounce,
 	}
 	engine.verifyConfig()
-	fmt.Println(engine.Config)
 	return &engine
 }
 
-func NewWatcherFromConfig(confPath string) *Engine {
+func NewEngineFromConfig(confPath string) *Engine {
 	engine := Engine{}
 	engine.readConfigFile(confPath)
-	engine.Log = log.NewStyledLogger(engine.ColorScheme, engine.GetLogLevel())
+	engine.ProcessLog, engine.Log = tui.NewTui(engine.ColorScheme, engine.GetLogLevel())
 	engine.verifyConfig()
 	return &engine
 }
@@ -87,6 +87,7 @@ func (engine *Engine) Monitor() {
 	// Start Exec Command
 	engine.Process = engine.Reload()
 
+	engine.Log.Info("Starting watcher")
 	// Create Channel for Events
 	e := make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
@@ -123,8 +124,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			}
 			// Continue with reload
 			relPath := getPath(engine.Log, ei.Path())
-			engine.Log.Info(fmt.Sprintf("\nFile Modified: %s", relPath))
-			engine.Log.Info("Reloading...")
+			engine.Log.Info("\nFile Modified: %s\nReloading...", relPath)
 			engine.Process = engine.Reload()
 		}
 	}

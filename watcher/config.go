@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"gotato/log"
 	"github.com/BurntSushi/toml"
 )
 
@@ -48,3 +49,12 @@ func (engine *Engine) verifyConfig() {
 	}
 	engine.Log.Debug("Config Verified")
 }
+
+func (engine *Engine) GetLogger() log.Logger {
+	return engine.Log
+}
+
+func (engine *Engine) GetProcessLogger() log.Logger {
+	return engine.ProcessLog
+}
+
