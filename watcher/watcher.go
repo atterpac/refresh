@@ -54,6 +54,7 @@ func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, co
 		Debounce:    debounce,
 	}
 	engine.verifyConfig()
+	fmt.Println(engine.Config)
 	return &engine
 }
 
