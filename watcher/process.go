@@ -2,16 +2,19 @@ package watcher
 
 import (
 	"fmt"
+	"gotato/log"
+	"gotato/tui"
 	"os"
 	"os/exec"
 	"runtime"
 	"strings"
 
+	"github.com/pterm/pterm"
 	"github.com/shirou/gopsutil/process"
 )
 
 // TODO: Pipe stdout from process into the watch engine or the logs
-func Reload(engine Engine) *process.Process {
+func (engine *Engine)Reload() *process.Process {
 	// If there is a process already running kill it and run postexec command
 	if engine.isRunning() {
 		ok := killProcess(engine.Process)
@@ -20,31 +23,74 @@ func Reload(engine Engine) *process.Process {
 			return nil
 		}
 		// Post Exec
-		err := RunFromString(engine.Config.PostExec)
+		err := runFromString(engine.Config.PostExec)
 		if err != nil {
 			engine.Log.Fatal(fmt.Sprintf("Error running post-exec command: %s", err.Error()))
 			os.Exit(1)
 		}
+		if engine.LogFile != nil {
+			log.DeleteTempFile(engine.LogFile.Name())
+		}
+		if engine.LogPipe != nil {
+			engine.Log.Debug("Closing log pipe")
+			engine.LogPipe.Close()
+			engine.LogPipe = nil
+		}
 	}
 	// Pre-Process Exec
-	err := RunFromString(engine.Config.PreExec)
+	err := runFromString(engine.Config.PreExec)
 	if err != nil {
 		engine.Log.Fatal(fmt.Sprintf("Error running pre-exec command: %s", err.Error()))
 		os.Exit(1)
 	}
 	// Start Exec Process
-	process, err := startProcess(generateExec(engine.Config.ExecCommand), engine.Config.RootPath)
+	process, err := engine.startProcess()
 	if err != nil {
 		engine.Log.Fatal(fmt.Sprintf("Error starting process: %s", err.Error()))
 		os.Exit(1)
 	}
+
 	return process
+}
+
+// Start process with exec command and a root path to call it in
+func (engine *Engine) startProcess() (*process.Process, error) {
+	var err error
+	command := generateExec(engine.Config.ExecCommand)
+	cmd := exec.Command(command[0], command[1:]...)
+	cmd.Dir = engine.Config.RootPath
+
+	logFile := log.CreateTmpFile(engine.Config.Label)
+	defer logFile.Close()
+
+	cmd.Stderr = logFile
+	engine.LogFile = logFile
+	engine.LogPipe, err = cmd.StdoutPipe()
+	if err != nil {
+		fmt.Println("Error getting stdout pipe", err.Error())
+		return nil, err
+	}
+	area, _ := pterm.DefaultArea.Start()
+	defer area.Stop()
+	go tui.PrintSubProcess(area, engine.LogPipe, engine.Config.LogChunk)
+
+	err = cmd.Start()
+	if err != nil {
+		fmt.Println(cmd.Err)
+		return nil, err
+	}
+	process, err := process.NewProcess(int32(cmd.Process.Pid))
+	if err != nil {
+		fmt.Println("Error getting process", err.Error())
+		return nil, err
+	}
+	return process, nil
 }
 
 // Kill spawned child process
 func killProcess(process *process.Process) bool {
 	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
-	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd 
+	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
 	if runtime.GOOS == "windows" {
 		err := killWindows(int(process.Pid))
 		if err != nil {
@@ -62,28 +108,8 @@ func killProcess(process *process.Process) bool {
 	return true
 }
 
-// Start process with exec command and a root path to call it in
-func startProcess(args []string, dir string) (*process.Process, error) {
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Dir = dir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	err := cmd.Start()
-	if err != nil {
-		fmt.Println(cmd.Err)
-		return nil, err
-	}
-	process, err := process.NewProcess(int32(cmd.Process.Pid))
-	if err != nil {
-		fmt.Println("Error getting process", err.Error())
-		return nil, err
-	}
-	return process, nil
-}
-
 // Takes a string and runs it as a command by sliceing the string on spaces and passing it to exec
-func RunFromString(cmdString string) error {
+func runFromString(cmdString string) error {
 	if cmdString == "" {
 		return nil
 	}

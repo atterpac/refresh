@@ -38,6 +38,7 @@ func main() {
 	flag.Parse()
 
 	// TODO: Make file config able to be overridden by cli
+	tui.Banner("Gotato v0.0.1")
 	if len(configPath) != 0 {
 		watch = watcher.NewWatcherFromConfig(configPath)
 	} else {
@@ -64,7 +65,6 @@ func main() {
 		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors, debounceThreshold)
 	}
 
-	tui.Banner("Gotato v0.0.1")
 	watch.Start()
 	<-make(chan struct{})
 }

@@ -17,6 +17,7 @@ type Config struct {
 	Ignore      Ignore `toml:"ignore"`
 	LogLevel    string `toml:"log_level"`
 	Debounce    int    `toml:"debounce"`
+	LogChunk    int    `toml:"log_chunk"`
 }
 
 // Reads a config.toml file and returns the engine
@@ -31,7 +32,7 @@ func (engine *Engine) readConfigFile(path string) *Engine {
 	return engine
 }
 
-//  Verify required data is present in config
+// Verify required data is present in config
 func (engine *Engine) verifyConfig() {
 	engine.Log.Debug("Verifying Config")
 	if engine.Config.RootPath == "" {
@@ -47,4 +48,3 @@ func (engine *Engine) verifyConfig() {
 	}
 	engine.Log.Debug("Config Verified")
 }
-

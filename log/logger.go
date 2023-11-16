@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/charmbracelet/lipgloss"
+	"github.com/pterm/pterm"
 )
 
 type Logger interface {
@@ -43,6 +44,10 @@ const (
 	ErrorLevel
 	FatalLevel
 )
+
+func GetLogger() *StyledLogger {
+	return &StyledLogger{}
+}
 
 func NewStyledLogger(scheme ColorScheme, level int) *StyledLogger {
 	styles := setColorScheme(scheme)
@@ -83,7 +88,7 @@ func (l *StyledLogger) Fatal(format string, args ...interface{}) {
 func (l *StyledLogger) log(style lipgloss.Style, format string, args ...interface{}) {
 	message := fmt.Sprintf(format, args...)
 	styledMessage := applyStyle(message, style)
-	fmt.Println(styledMessage)
+	pterm.Println(styledMessage)
 }
 
 // Set Logging Level
@@ -117,7 +122,6 @@ func setColorScheme(scheme ColorScheme) LogStyles {
 	styles.Warn = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Warn))
 	styles.Error = lipgloss.NewStyle().Foreground(lipgloss.Color(scheme.Error))
 	styles.Fatal = lipgloss.NewStyle().
-	// Hex for a dark gray color 
 		Foreground(lipgloss.Color(scheme.Error)).
 		Border(lipgloss.RoundedBorder()).
 		Align(lipgloss.Center).
@@ -125,3 +129,4 @@ func setColorScheme(scheme ColorScheme) LogStyles {
 		Width(60)
 	return styles
 }
+

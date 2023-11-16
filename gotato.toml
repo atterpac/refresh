@@ -11,7 +11,8 @@ exec_command = "go run main.go"
 post_exec = ""
 # debug | info | warn | error | fatal
 # Defaults to Info if not provided
-log_level = "debug" 
+log_level = "info" 
+log_chunk = 10 # Number of lines to show in the TUI
 # Debounce setting for ignoring reptitive file system notifications
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore

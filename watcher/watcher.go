@@ -3,10 +3,13 @@ package watcher
 import (
 	"fmt"
 	"gotato/log"
+	"gotato/tui"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/pterm/pterm"
 	"github.com/rjeczalik/notify"
 	"github.com/shirou/gopsutil/process"
 )
@@ -17,8 +20,9 @@ type Engine struct {
 	Config      Config          `toml:"config"`
 	ColorScheme log.ColorScheme `toml:"color_scheme"`
 	Log         log.Logger
+	LogFile     *os.File
+	LogPipe     io.ReadCloser
 }
-
 
 type EventInfo struct {
 	Name   string
@@ -27,6 +31,10 @@ type EventInfo struct {
 
 func (engine *Engine) Start() {
 	engine.Log.Info(fmt.Sprintf("Starting Watcher for %s", engine.Config.Label))
+	err := log.ClearTmpFolders()
+	if err != nil {
+		engine.Log.Error(fmt.Sprintf("Error clearing tmp folders: %s", err.Error()))
+	}
 	engine.Monitor()
 }
 
@@ -72,7 +80,10 @@ func (engine *Engine) GetLogLevel() int {
 
 func (engine *Engine) Monitor() {
 	// Start Exec Command
-	engine.Process = Reload(*engine)
+	engine.Process = engine.Reload()
+	area, _ := pterm.DefaultArea.Start()
+	defer area.Stop()
+	go tui.PrintSubProcess(area, engine.LogPipe, engine.Config.LogChunk)
 	// Create Channel for Events
 	e := make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
@@ -96,11 +107,11 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 		if eventInfo.Reload {
 			// Check if file should be ignored
 			if engine.Config.Ignore.CheckIgnore(ei.Path()) {
-				engine.Log.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String() ,ei.Path()))
+				engine.Log.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String(), ei.Path()))
 				continue
 			}
 			// Check if we should debounce
-			if checkDebounce(debounceTime, debounceThreshold ) {
+			if checkDebounce(debounceTime, debounceThreshold) {
 				debounceTime = time.Now()
 				engine.Log.Debug(fmt.Sprintf("Debounce Timer Start: %v", debounceTime))
 			} else {
@@ -109,9 +120,9 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			}
 			// Continue with reload
 			relPath := getPath(engine.Log, ei.Path())
-			engine.Log.Info(fmt.Sprintf("File Modified: %s", relPath))
+			engine.Log.Info(fmt.Sprintf("\nFile Modified: %s", relPath))
 			engine.Log.Info("Reloading...")
-			engine.Process = Reload(*engine)
+			engine.Process = engine.Reload()
 		}
 	}
 }
@@ -140,5 +151,5 @@ func stripCurrentDirectory(fullPath, currentDirectory string) (string, error) {
 }
 
 func checkDebounce(debounceTime time.Time, debounceThreshold time.Duration) bool {
-	return time.Now().After(debounceTime.Add(debounceThreshold)) 
+	return time.Now().After(debounceTime.Add(debounceThreshold))
 }
