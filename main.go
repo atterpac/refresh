@@ -18,6 +18,8 @@ func main() {
 	var logLevel string
 	var configPath string
 	var debounce string
+	var chunkSize string
+	var label string
 	var watch *watcher.Engine
 
 	// Ignore
@@ -29,11 +31,13 @@ func main() {
 	flag.StringVar(&rootPath, "path", "", "Root path to watch")
 	flag.StringVar(&ignoreList, "ignore", "", "Comma-separated list of files to ignore")
 	flag.StringVar(&execCommand, "exec", "", "Command to execute on changes")
+	flag.StringVar(&label, "l", "", "Label for sub-process")
 	flag.StringVar(&logLevel, "log", "info", "Level to set Logs")
 	flag.StringVar(&configPath, "f", "", "File to read config from")
 	flag.StringVar(&ignoreDir, "id", "", "Ignore Directory list as comma-separated list")
 	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
 	flag.StringVar(&ignoreExt, "ie", "", "Ignore Extension list as comma-separated list")
+	flag.StringVar(&chunkSize, "chunk", "10", "Chunk size for log output")
 	flag.StringVar(&debounce, "d", "1000", "Debounce time in milliseconds")
 	flag.Parse()
 
@@ -62,7 +66,7 @@ func main() {
 		}
 		// Root | Exec | Label | LogLevel | IgnoreList | Colors as log.ColorScheme | Debounce
 		// Debounce string to int
-		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors, debounceThreshold)
+		watch = watcher.NewWatcher(rootPath, execCommand, "", logLevel, ignore, colors, debounceThreshold, chunkSize)
 	}
 
 	watch.Start()

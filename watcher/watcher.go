@@ -3,13 +3,12 @@ package watcher
 import (
 	"fmt"
 	"gotato/log"
-	"gotato/tui"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
-	"github.com/pterm/pterm"
 	"github.com/rjeczalik/notify"
 	"github.com/shirou/gopsutil/process"
 )
@@ -38,14 +37,19 @@ func (engine *Engine) Start() {
 	engine.Monitor()
 }
 
-func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, colors log.ColorScheme, debounce int) *Engine {
+func NewWatcher(rootPath, execCommand, label, logLevel string, ignore Ignore, colors log.ColorScheme, debounce int, chunkSize string) *Engine {
 	engine := Engine{}
 	engine.Log = log.NewStyledLogger(engine.ColorScheme, engine.GetLogLevel())
+	chunk, err := strconv.Atoi(chunkSize)
+	if err != nil {
+		engine.Log.Error(fmt.Sprintf("Error converting chunk size to int: %s", err.Error()))
+	}
 	engine.Config = Config{
 		RootPath:    rootPath,
 		ExecCommand: execCommand,
 		Label:       label,
 		LogLevel:    logLevel,
+		LogChunk:    chunk,
 		Ignore:      ignore,
 		Debounce:    debounce,
 	}
@@ -81,9 +85,7 @@ func (engine *Engine) GetLogLevel() int {
 func (engine *Engine) Monitor() {
 	// Start Exec Command
 	engine.Process = engine.Reload()
-	area, _ := pterm.DefaultArea.Start()
-	defer area.Stop()
-	go tui.PrintSubProcess(area, engine.LogPipe, engine.Config.LogChunk)
+
 	// Create Channel for Events
 	e := make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories

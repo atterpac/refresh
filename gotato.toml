@@ -2,7 +2,7 @@
 # Just used in the TUI not required
 label = "My Project"
 # Relative to this files location
-root_path = "../testProject"
+root_path = "./test"
 # Runs prior to the exec command starting
 pre_exec = ""
 # Command to run on reload
