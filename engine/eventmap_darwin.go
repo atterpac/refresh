@@ -1,6 +1,6 @@
 //go:build darwin
 
-package watcher
+package engine
 
 import (
 	"github.com/rjeczalik/notify"

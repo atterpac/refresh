@@ -1,6 +1,6 @@
 //go:build linux
 
-package watcher
+package engine
 
 import (
 	"github.com/rjeczalik/notify"

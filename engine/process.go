@@ -1,9 +1,8 @@
-package watcher
+package engine
 
 import (
 	"fmt"
-	"gotato/log"
-	"gotato/tui"
+	"log/slog"
 	"os"
 	"os/exec"
 	"runtime"
@@ -13,25 +12,22 @@ import (
 )
 
 // TODO: Pipe stdout from process into the watch engine or the logs
-func (engine *Engine)Reload() *process.Process {
+func (engine *Engine) reloadProcess() *process.Process {
 	// If there is a process already running kill it and run postexec command
 	if engine.isRunning() {
 		ok := killProcess(engine.Process)
 		if !ok {
-			engine.Log.Fatal("Error releasing process: %s")
+			slog.Error("Error releasing process: %s")
 			return nil
 		}
 		// Post Exec
 		err := runFromString(engine.Config.PostExec)
 		if err != nil {
-			engine.Log.Fatal(fmt.Sprintf("Error running post-exec command: %s", err.Error()))
+			slog.Error(fmt.Sprintf("Error running post-exec command: %s", err.Error()))
 			os.Exit(1)
 		}
-		if engine.ProcessLog != nil {
-			log.DeleteTempFile(engine.ProcessLogFile.Name())
-		}
 		if engine.ProcessLogPipe != nil {
-			engine.Log.Debug("Closing log pipe")
+			slog.Debug("Closing log pipe")
 			engine.ProcessLogPipe.Close()
 			engine.ProcessLogPipe = nil
 		}
@@ -39,13 +35,13 @@ func (engine *Engine)Reload() *process.Process {
 	// Pre-Process Exec
 	err := runFromString(engine.Config.PreExec)
 	if err != nil {
-		engine.Log.Fatal(fmt.Sprintf("Error running pre-exec command: %s", err.Error()))
+		slog.Error(fmt.Sprintf("Error running pre-exec command: %s", err.Error()))
 		os.Exit(1)
 	}
 	// Start Exec Process
 	process, err := engine.startProcess()
 	if err != nil {
-		engine.Log.Fatal(fmt.Sprintf("Error starting process: %s", err.Error()))
+		slog.Error(fmt.Sprintf("Error starting process: %s", err.Error()))
 		os.Exit(1)
 	}
 
@@ -59,17 +55,16 @@ func (engine *Engine) startProcess() (*process.Process, error) {
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Dir = engine.Config.RootPath
 
-	logFile := log.CreateTmpFile(engine.Config.Label)
-	defer logFile.Close()
-
-	cmd.Stderr = logFile
-	engine.ProcessLogFile = logFile
-	engine.ProcessLogPipe, err = cmd.StdoutPipe()
-	if err != nil {
-		fmt.Println("Error getting stdout pipe", err.Error())
-		return nil, err
+	// If an external slog is provided do not pipe stdout to the engine
+	if !engine.Config.ExternalSlog {
+		cmd.Stderr = os.Stderr
+		engine.ProcessLogPipe, err = cmd.StdoutPipe()
+		if err != nil {
+			fmt.Println("Error getting stdout pipe", err.Error())
+			return nil, err
+		}
+		go printSubProcess(engine.ProcessLogPipe)
 	}
-	go tui.PrintSubProcess(engine.ProcessLog, engine.ProcessLogPipe, engine.Config.LogChunk)
 
 	err = cmd.Start()
 	if err != nil {
