@@ -41,8 +41,5 @@ func (engine *Engine) verifyConfig() {
 		slog.Error("ERROR: Exec Command not set")
 		os.Exit(1)
 	}
-	if engine.Config.Label == "" {
-		slog.Warn("Label not set")
-	}
 	slog.Debug("Config Verified")
 }

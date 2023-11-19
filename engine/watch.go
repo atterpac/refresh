@@ -21,7 +21,7 @@ func (engine *Engine) watch() {
 	// Create Channel for Events
 	engine.Chan = make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
-	if err := notify.Watch(engine.Config.RootPath+"/...", e, notify.All); err != nil {
+	if err := notify.Watch(engine.Config.RootPath+"/...", engine.Chan, notify.All); err != nil {
 		slog.Error(fmt.Sprintf("Error creating watcher: %s", err.Error()))
 	}
 	defer notify.Stop(engine.Chan)
