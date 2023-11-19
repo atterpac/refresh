@@ -25,9 +25,9 @@ go get github.com/atterpac/gotato
 
 `-ae` Command to b be called when a modifcation is detected after the main process closes 
 
-`-l` Log Level to display
+`-l` Log Level to display options can include `"debug", "info","warn","error"`
 
-`-f` path to a TOML config file see below for details on the format of config
+`-f` path to a TOML config file see [Config File](https://github.com/Atterpac/gotato#config-file) for details on the format of config
 
 `-id` Ignore directories provided as a comma-separated list
 
