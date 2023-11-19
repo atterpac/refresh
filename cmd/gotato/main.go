@@ -16,7 +16,6 @@ func main() {
 	var logLevel string
 	var configPath string
 	var debounce string
-	var label string
 	var watch *gotato.Engine
 
 	// Ignore
@@ -24,10 +23,9 @@ func main() {
 	var ignoreFile string
 	var ignoreExt string
 
-	flag.StringVar(&rootPath, "path", "", "Root path to watch")
-	flag.StringVar(&execCommand, "exec", "", "Command to execute on changes")
-	flag.StringVar(&label, "l", "", "Label for sub-process")
-	flag.StringVar(&logLevel, "log", "info", "Level to set Logs")
+	flag.StringVar(&rootPath, "p", "", "Root path to watch")
+	flag.StringVar(&execCommand, "e", "", "Command to execute on changes")
+	flag.StringVar(&logLevel, "l", "info", "Level to set Logs")
 	flag.StringVar(&configPath, "f", "", "File to read config from")
 	flag.StringVar(&ignoreDir, "id", "", "Ignore Directory list as comma-separated list")
 	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
@@ -53,7 +51,6 @@ func main() {
 		config := gotato.Config{
 			RootPath:    rootPath,
 			ExecCommand: execCommand,
-			Label:       label,
 			LogLevel:    logLevel,
 			Ignore:      ignore,
 			Debounce:    debounceThreshold,

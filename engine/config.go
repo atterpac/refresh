@@ -8,7 +8,6 @@ import (
 )
 
 type Config struct {
-	Label       string `toml:"label"`
 	RootPath    string `toml:"root_path"`
 	PreExec     string `toml:"pre_exec"`
 	ExecCommand string `toml:"exec_command"`
