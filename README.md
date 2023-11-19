@@ -100,7 +100,6 @@ func main () {
 		Dir:       map[string]bool{{".git",true},{"node_modules", true}},
 		Extension: map[string]bool{{".txt",true},{".db", true}},
 	}
-	// Debounce string to int
 	config := gotato.Config{
 		RootPath:    "./subExecProcess",
 		ExecCommand: "go run main.go",
