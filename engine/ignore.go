@@ -25,7 +25,7 @@ func (i *Ignore) checkIgnore(path string) bool {
 		_, file = i.File[basePath]
 	}
 	if !isMapEmpty(i.Extension) {
-		_, ext = i.Extension[path]
+		_, ext = i.Extension[filepath.Ext(path)]
 	}
 
 	return dir || file || ext || isTmp(basePath)

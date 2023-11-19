@@ -19,7 +19,11 @@ go get github.com/Atterpac/gotato
 #### Flags
 `-p` Root path that will be watched and commands will be executed in typically this is './'
 
+`-be` Command to be called before the exec command for example `go mod tidy`
+
 `-e` Command to be called when a modification is detected for example `go run main.go`
+
+`-ae` Command to b be called when a modifcation is detected after the main process closes 
 
 `-l` Log Level to display
 
@@ -36,7 +40,7 @@ go get github.com/Atterpac/gotato
 
 #### Example
 ```bash
-gotato -p ./ -e "go run main.go" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
+gotato -p ./ -e "go run main.go" -be "go mod tidy" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
 ```
 
 ### Config File

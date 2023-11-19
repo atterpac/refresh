@@ -12,7 +12,9 @@ import (
 
 func main() {
 	var rootPath string
+	var preExec string
 	var execCommand string
+	var postExec string
 	var logLevel string
 	var configPath string
 	var debounce string
@@ -23,8 +25,10 @@ func main() {
 	var ignoreFile string
 	var ignoreExt string
 
-	flag.StringVar(&rootPath, "p", "", "Root path to watch")
+	flag.StringVar(&rootPath, "p", "./", "Root path to watch")
 	flag.StringVar(&execCommand, "e", "", "Command to execute on changes")
+	flag.StringVar(&preExec, "be", "", "Command to execute before the exec command is ran")
+	flag.StringVar(&postExec, "ae", "", "Command to execute when a reload is dectected after the orginal exec completes")
 	flag.StringVar(&logLevel, "l", "info", "Level to set Logs")
 	flag.StringVar(&configPath, "f", "", "File to read config from")
 	flag.StringVar(&ignoreDir, "id", "", "Ignore Directory list as comma-separated list")
@@ -50,6 +54,8 @@ func main() {
 		// Debounce string to int
 		config := tato.Config{
 			RootPath:    rootPath,
+			PreExec:     preExec,
+			PostExec:    postExec,
 			ExecCommand: execCommand,
 			LogLevel:    logLevel,
 			Ignore:      ignore,
