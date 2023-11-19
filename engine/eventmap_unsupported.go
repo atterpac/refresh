@@ -1,6 +1,6 @@
 //go:build !windows && !linux && !darwin
 
-package watcher
+package engine
 
 func init() {
 	println("Unsupported OS detected. File watching will not work.")

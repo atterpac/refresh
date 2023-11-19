@@ -12,9 +12,6 @@ post_exec = ""
 # debug | info | warn | error | fatal
 # Defaults to Info if not provided
 log_level = "info" 
-# Number of lines to show in TUI
-# Line count in terminal will be 1+ this number due to the scanner keeping a clear line on bottom
-log_chunk = 20 # Number of lines to show in the TUI
 # Debounce setting for ignoring reptitive file system notifications
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
@@ -25,12 +22,4 @@ dir = [".git", "node_modules", "newdir"]
 file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
 # File extensions to ignore
 extension = [".db", ".sqlite"]
-
-# Sets logging color scheme
-[color_scheme]
-debug = "#87CEEB"  # Sky Blue
-info = "#98FB98"   # Pale Green
-warn = "#FFD700"   # Gold
-error = "#FFA07A"  # Light Salmon
-fatal = "#FF6347"  # Tomato
 

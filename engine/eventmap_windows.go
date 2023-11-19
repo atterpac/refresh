@@ -1,6 +1,6 @@
 //go:build windows
 
-package watcher
+package engine
 
 import (
 	"github.com/rjeczalik/notify"
