@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gotato/engine"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/Atterpac/gotato/engine"
 )
 
 func main() {
