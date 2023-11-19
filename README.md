@@ -84,7 +84,9 @@ func main () {
 		LogLevel:    "info",
 		Ignore:      ignore,
 		Debounce:    1000,
-		Slog: nil // Optionally provide a slog interface for gotato to use if nil a default will be provided
+		Slog: nil // Optionally provide a slog interface
+                  // if nil a default will be provided
+                  // If provided stdout will not be piped through gotato
 	}
 	engine := gotato.NewEngineFromConfig(config)
 	engine.Start()
