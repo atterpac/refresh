@@ -103,6 +103,8 @@ gotato.NewEngineFromTOML("path/to/toml")
 ### Config File
 Gotato is able to read a config from a .toml file and passed in through the `-f /path/to/config` and example file is provided but should follow the following format
 
+Config can be used with `gotato -f /path/to/config.toml`
+
 ```toml
 [config]
 # Relative to this files location
