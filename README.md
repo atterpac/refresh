@@ -6,11 +6,11 @@ Gotato (golang hot potato) is a tool for hot reloading your codebase based on fi
 ## Install
 Installing via go CLI is the easiest method more methods are on the list
 ```bash
-go install github.com/Atterpac/gotato/cmd/gotato@latest
+go install github.com/atterpac/gotato/cmd/gotato@latest
 ```
 Alternative if you wish to use as a package and not a cli
 ```bash
-go get github.com/Atterpac/gotato
+go get github.com/atterpac/gotato
 ```
 ## Usage
 
