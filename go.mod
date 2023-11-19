@@ -3,6 +3,7 @@ module gotato
 go 1.21.1
 
 require (
+	github.com/Atterpac/gotato v0.0.0-20231119010818-5c2ebd64057b
 	github.com/BurntSushi/toml v1.3.2
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/charmbracelet/log v0.3.0
@@ -39,4 +40,4 @@ require (
 	golang.org/x/text v0.13.0 // indirect
 )
 
-replace github.com/Atterpac/gotato => ../ // local
+replace github.com/Atterpac/gotato => ../gotato // local

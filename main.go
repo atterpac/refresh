@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Atterpac/gotato/engine"
+	gotato "github.com/Atterpac/gotato/engine"
 )
 
 func main() {
@@ -17,7 +17,7 @@ func main() {
 	var configPath string
 	var debounce string
 	var label string
-	var watch *engine.Engine
+	var watch *gotato.Engine
 
 	// Ignore
 	var ignoreDir string
@@ -37,9 +37,9 @@ func main() {
 
 	// TODO: Make file config able to be overridden by cli
 	if len(configPath) != 0 {
-		watch = engine.NewEngineFromTOML(configPath)
+		watch = gotato.NewEngineFromTOML(configPath)
 	} else {
-		ignore := engine.Ignore{
+		ignore := gotato.Ignore{
 			File:      stringSliceToMap(strings.Split(ignoreFile, ",")),
 			Dir:       stringSliceToMap(strings.Split(ignoreDir, ",")),
 			Extension: stringSliceToMap(strings.Split(ignoreExt, ",")),
@@ -50,7 +50,7 @@ func main() {
 			os.Exit(1)
 		}
 		// Debounce string to int
-		config := engine.Config{
+		config := gotato.Config{
 			RootPath:    rootPath,
 			ExecCommand: execCommand,
 			Label:       label,
@@ -58,7 +58,7 @@ func main() {
 			Ignore:      ignore,
 			Debounce:    debounceThreshold,
 		}
-		watch = engine.NewEngineFromConfig(config)
+		watch = gotato.NewEngineFromConfig(config)
 	}
 
 	watch.Start()

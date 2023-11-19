@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"log"
+	"log/slog"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -15,7 +15,7 @@ type Ignore struct {
 
 // Runs all ignore checks to decide if reload should happen
 func (i *Ignore) checkIgnore(path string) bool {
-	log.Println("Checking ignore", "path", path)
+	slog.Debug("Checking ignore", "path", path)
 	var dir, file, ext bool = false, false, false
 	basePath := filepath.Base(path)
 	if !isMapEmpty(i.Dir) {
@@ -81,6 +81,5 @@ func (i *Ignore) UnmarshalTOML(data interface{}) error {
 			}
 		}
 	}
-
 	return nil
 }
