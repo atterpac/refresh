@@ -94,6 +94,10 @@ type Ignore struct {
 ```
 
 ```go
+import ( // other imports
+    "github.com/atterpac/gotato/engine"
+    )
+
 func main () {
 	ignore := gotato.Ignore{
 		File:      map[string]bool{{"ignore.go",true},{".env", true}},
