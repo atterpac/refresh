@@ -1,4 +1,4 @@
-module github.com/Atterpac/gotato/engine
+module github.com/atterpac/gotato
 
 go 1.21.1
 
@@ -38,3 +38,5 @@ require (
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 )
+
+replace github.com/atterpac/gotato/engine => ./engine
