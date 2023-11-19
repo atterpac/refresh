@@ -1,4 +1,4 @@
-module github.com/Atterpac/gotato
+module github.com/Atterpac/gotato/engine
 
 go 1.21.1
 

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Atterpac/gotato"
+	gotato "github.com/atterpac/gotato/engine"
 )
 
 func main() {
