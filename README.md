@@ -112,4 +112,4 @@ func main () {
 	engine := gotato.NewEngineFromConfig(config)
 	engine.Start()
 }
-```: 
+```
