@@ -1,5 +1,6 @@
-# :construction: ACTIVE DEVELOPMENT NOT FOR USE :construction:
-**THIS README MIGHT NOT REFLECT THE ACTUAL STATE OF THE CODE**
+# :construction: EARLY DEVELOPMENT :construction:
+This is a small tool I have built that is largely untested off of my machine. You are welcome to try it and if you notice any issues report them on the github and I will look into them.
+
 ## GOTATO Hot Reload
 Gotato (golang hot potato) is a tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify)
 
@@ -13,8 +14,6 @@ Alternative if you wish to use as a package and not a cli
 go get github.com/atterpac/gotato
 ```
 ## Usage
-
-### CLI
 
 #### Flags
 `-p` Root path that will be watched and commands will be executed in typically this is './'
@@ -37,38 +36,9 @@ go get github.com/atterpac/gotato
 
 `-d` Debounce timer in milliseconds, used to ignore repetitive system
 
-
 #### Example
 ```bash
-gotato -p ./ -e "go run main.go" -be "go mod tidy" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
-```
-
-### Config File
-Gotato is able to read a config from a .toml file and passed in through the `-f /path/to/config` and example file is provided but should follow the following format
-
-```toml
-[config]
-# Relative to this files location
-root_path = "./"
-# Runs prior to the exec command starting
-pre_exec = "go mod tidy"
-# Command to run on reload
-exec_command = "go run main.go"
-# Runs when a file reload is triggered after killing the previous process
-post_exec = ""
-# debug | info | warn | error | fatal
-# Defaults to Info if not provided
-log_level = "info" 
-# Debounce setting for ignoring reptitive file system notifications
-debounce = 1000 # Milliseconds
-# Sets what files the watcher should ignore
-[config.ignore]
-# Directories to ignore
-dir = [".git", "node_modules", "newdir"]
-# Files to ignore
-file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
-# File extensions to ignore
-extension = [".db", ".sqlite"]
+gotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
 ```
 
 ### Embedding into your dev project
@@ -124,9 +94,37 @@ func main () {
 }
 ```
 
-If you would prefer to load from a config file rather than building the structs you can use 
+If you would prefer to load from a [config](https://github.com/Atterpac/gotato#config-file) file rather than building the structs you can use 
 ```go
 
 gotato.NewEngineFromTOML("path/to/toml")
+```
+
+### Config File
+Gotato is able to read a config from a .toml file and passed in through the `-f /path/to/config` and example file is provided but should follow the following format
+
+```toml
+[config]
+# Relative to this files location
+root_path = "./"
+# Runs prior to the exec command starting
+pre_exec = "go mod tidy"
+# Command to run on reload
+exec_command = "go run main.go"
+# Runs when a file reload is triggered after killing the previous process
+post_exec = ""
+# debug | info | warn | error | fatal
+# Defaults to Info if not provided
+log_level = "info" 
+# Debounce setting for ignoring reptitive file system notifications
+debounce = 1000 # Milliseconds
+# Sets what files the watcher should ignore
+[config.ignore]
+# Directories to ignore
+dir = [".git", "node_modules", "newdir"]
+# Files to ignore
+file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
+# File extensions to ignore
+extension = [".db", ".sqlite"]
 ```
 
