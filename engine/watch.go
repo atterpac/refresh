@@ -19,14 +19,14 @@ func (engine *Engine) watch() {
 	// Start Exec Command
 	engine.Process = engine.reloadProcess()
 	// Create Channel for Events
-	e := make(chan notify.EventInfo, 1)
+	engine.Chan = make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
 	if err := notify.Watch(engine.Config.RootPath+"/...", e, notify.All); err != nil {
 		slog.Error(fmt.Sprintf("Error creating watcher: %s", err.Error()))
 	}
-	defer notify.Stop(e)
+	defer notify.Stop(engine.Chan)
 	slog.Warn("Watching for file changes...")
-	watchEvents(engine, e)
+	watchEvents(engine, engine.Chan)
 }
 
 func watchEvents(engine *Engine, e chan notify.EventInfo) {

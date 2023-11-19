@@ -4,14 +4,17 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"runtime"
 
+	"github.com/rjeczalik/notify"
 	"github.com/shirou/gopsutil/process"
 )
 
 type Engine struct {
 	Process        *process.Process
+	Chan 		 chan notify.EventInfo
 	Active         bool
-	Config         Config          `toml:"config"`
+	Config         Config `toml:"config"`
 	ProcessLogFile *os.File
 	ProcessLogPipe io.ReadCloser
 }
@@ -27,12 +30,20 @@ func (engine *Engine) Start() {
 	engine.watch()
 }
 
-func NewEngine(rootPath, execCommand, label, logLevel string, ignore Ignore, debounce int, chunkSize string) *Engine {
+func (engine *Engine) Stop() {
+	if runtime.GOOS == "windows" {
+		killWindows(int(engine.Process.Pid))
+	} else {
+		killProcess(engine.Process)
+	}
+	notify.Stop(engine.Chan)
+}
+
+func NewEngine(rootPath, execCommand, logLevel string, ignore Ignore, debounce int, chunkSize string) *Engine {
 	engine := &Engine{}
 	engine.Config = Config{
 		RootPath:    rootPath,
 		ExecCommand: execCommand,
-		Label:       label,
 		LogLevel:    logLevel,
 		Ignore:      ignore,
 		Debounce:    debounce,
@@ -54,5 +65,3 @@ func NewEngineFromTOML(confPath string) *Engine {
 	engine.verifyConfig()
 	return &engine
 }
-
-

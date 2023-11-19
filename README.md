@@ -103,5 +103,8 @@ func main () {
 	}
 	engine := gotato.NewEngineFromConfig(config)
 	engine.Start()
+
+    // Stop monitoring files and kill child processes
+    engine.Stop()
 }
 ```: 
