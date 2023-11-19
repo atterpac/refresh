@@ -18,4 +18,3 @@ require (
 	golang.org/x/sys v0.14.0 // indirect
 )
 
-replace github.com/atterpac/gotato/engine => ./engine
