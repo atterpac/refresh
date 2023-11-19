@@ -123,3 +123,10 @@ func main () {
 	engine.Stop()
 }
 ```
+
+If you would prefer to load from a config file rather than building the structs you can use 
+```go
+
+gotato.NewEngineFromTOML("path/to/toml")
+```
+
