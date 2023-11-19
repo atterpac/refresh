@@ -18,13 +18,21 @@ go get github.com/Atterpac/gotato
 
 #### Flags
 `-p` Root path that will be watched and commands will be executed in typically this is './'
+
 `-e` Command to be called when a modification is detected for example `go run main.go`
-`-l` Log Level to display 
+
+`-l` Log Level to display
+
 `-f` path to a TOML config file see below for details on the format of config
+
 `-id` Ignore directories provided as a comma-separated list
+
 `-if` Ignore files provided as a comma-separated list
+
 `-ie` Ignore extensions provided as a comma-separated list
+
 `-d` Debounce timer in milliseconds, used to ignore repetitive system
+
 
 #### Example
 ```bash
@@ -92,7 +100,6 @@ func main () {
 		Dir:       map[string]bool{{".git",true},{"node_modules", true}},
 		Extension: map[string]bool{{".txt",true},{".db", true}},
 	}
-	// Debounce string to int
 	config := gotato.Config{
 		RootPath:    "./subExecProcess",
 		ExecCommand: "go run main.go",
@@ -107,4 +114,4 @@ func main () {
     // Stop monitoring files and kill child processes
     engine.Stop()
 }
-```: 
+```
