@@ -34,4 +34,3 @@ github.com/yusufpapurcu/wmi
 ## explicit; go 1.18
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# github.com/atterpac/gotato/engine => ./engine
