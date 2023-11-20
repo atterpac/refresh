@@ -1,8 +1,14 @@
-# :construction: EARLY DEVELOPMENT :construction:
-This is a small tool I have built that is largely untested off of my machine. You are welcome to try it and if you notice any issues report them on the github and I will look into them.
-
-## GOTATO Hot Reload
+## Gotato
 Gotato (golang hot potato) is a tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify)
+
+**Not limited to Golang codebases, file changes call a cmd.Exe() so any process you would like to reload is possible**
+
+## Key Features
+- Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples FSEvents.
+- Allows for customization via code / config file / cli flags
+- Extended customization using reloadCallback to bypass gotato rulesets and add addtional logic/logging on your applications end
+- Default logger built in with the ablity to mute logs as well as pass in your own slog handler to be used in app
+- MIT licensed and built to be able to be used as a library or standalone CLI tool
 
 ## Install
 Installing via go CLI is the easiest method more methods are on the list
@@ -43,6 +49,8 @@ gotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -i
 
 ### Embedding into your dev project
 There can be some uses where you might want to start a watcher internally or for a tool for development Gotato provides a function `NewEngineFromOptions` which takes an `gotato.Config` and allows for the `engine.Start()` function
+
+Using gotato as a library also opens the ability to add a Callback [Callback](https://github.com/Atterpac/gotato#reload-callback-function) function that is called on every FS notification
 
 ```go
 type Config struct {
@@ -98,7 +106,7 @@ func main () {
 	engine.Stop()
 }
 ```
-Callback data structure
+Reload Callback Function
 ```go
 // Called whenever a change is detected in the filesystem
 // By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
@@ -111,7 +119,8 @@ type EventCallback struct {
 	Path string    // Full path to the modified file
 }
 
-func CallbackExample(e *gotato.EventCallBack) (bool, bool) {
+// Example
+func Callback(e *gotato.EventCallBack) (bool, bool) {
     // Ignore create file notif
     if e.Name == notify.Create {
         return false, false
@@ -163,3 +172,9 @@ file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
 extension = [".db", ".sqlite"]
 ```
 
+### Alternatives
+Gotato not for you? Here are some popular hot reload alternatives
+
+- [Air](https://github.com/cosmtrek/air)
+- [Realize](https://github.com/oxequa/realize)
+- [Fresh](https://github.com/gravityblast/fresh)
