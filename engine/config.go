@@ -16,6 +16,7 @@ type Config struct {
 	Ignore       Ignore `toml:"ignore"`
 	LogLevel     string `toml:"log_level"`
 	Debounce     int    `toml:"debounce"`
+	Callback     func(*EventCallback) (bool, bool)
 	Slog         *slog.Logger
 	ExternalSlog bool
 }

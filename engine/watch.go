@@ -15,6 +15,17 @@ type EventInfo struct {
 	Reload bool
 }
 
+// Called whenever a change is detected in the filesystem
+// By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
+// Callback returns two booleans reload and bypass
+// reload: if true will reload the process as long as the eventMap allows it
+// bypass: if true will bypass the eventMap and reload the process regardless of the eventMap instruction
+type EventCallback struct {
+	Name string    // rjeczalik/notify.[EVENT]
+	Time time.Time // time.Now() when event was triggered
+	Path string    // Full path to the modified file
+}
+
 func (engine *Engine) watch() {
 	// Start Exec Command
 	engine.Process = engine.reloadProcess()
@@ -38,6 +49,20 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 		eventInfo, ok := eventMap[ei.Event()]
 		if !ok {
 			slog.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
+			continue
+		}
+		if engine.Config.Callback != nil {
+			reload, bypass := engine.Config.Callback(&EventCallback{
+				Name: ei.Event().String(),
+				Time: time.Now(),
+				Path: ei.Path(),
+			})
+			if !reload {
+				continue
+			}
+			if bypass && reload {
+				engine.Process = engine.reloadProcess()
+			}
 			continue
 		}
 		if eventInfo.Reload {

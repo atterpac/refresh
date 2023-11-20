@@ -9,7 +9,7 @@ pre_exec = ""
 exec_command = "go run main.go"
 # Runs when a file reload is triggered after killing the previous process
 post_exec = ""
-# debug | info | warn | error
+# debug | info | warn | error | mute
 # Defaults to Info if not provided
 log_level = "info" 
 # Debounce setting for ignoring reptitive file system notifications

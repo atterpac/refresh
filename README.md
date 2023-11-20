@@ -81,12 +81,15 @@ func main () {
 	config := gotato.Config{
 		RootPath:    "./subExecProcess",
 		ExecCommand: "go run main.go",
-		LogLevel:    "info",
+		LogLevel:    "info", // debug | info | warn | error | mute (discards all logs)
 		Ignore:      ignore,
 		Debounce:    1000,
-		Slog: nil // Optionally provide a slog interface
+		Slog: nil, // Optionally provide a slog interface
                   // if nil a default will be provided
                   // If provided stdout will not be piped through gotato
+        Callback: func(*EventCallback) bool // Optionally provide a callback function to be called upon file notification events
+                                            // If callback returns true reload will process
+                                            // EventCallback is a struct of Name, Path, Time of the event
 	}
 	engine := gotato.NewEngineFromConfig(config)
 	engine.Start()
@@ -94,6 +97,34 @@ func main () {
 	// Stop monitoring files and kill child processes
 	engine.Stop()
 }
+```
+Callback data structure
+```go
+// Called whenever a change is detected in the filesystem
+// By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
+// Callback returns two booleans reload and bypass
+// reload: if true will reload the process as long as the eventMap allows it
+// bypass: if true will bypass the eventMap and reload the process regardless of the eventMap instruction
+type EventCallback struct {
+	Name string    // rjeczalik/notify.[EVENT]
+	Time time.Time // time.Now() when event was triggered
+	Path string    // Full path to the modified file
+}
+
+func CallbackExample(e *gotato.EventCallBack) (bool, bool) {
+    // Ignore create file notif
+    if e.Name == notify.Create {
+        return false, false
+    }
+    // Continue as normal for write but add some logs
+    if e.Name == notify.Write{
+        fmt.Println("Wow a write was done")
+        return true, false
+    }
+    // Default would normally ignore a remove function, both reload and bypass being true would force a reload 
+    if e.Name == notify.Remove{
+        return true, true
+    }
 ```
 
 If you would prefer to load from a [config](https://github.com/Atterpac/gotato#config-file) file rather than building the structs you can use 
@@ -117,7 +148,7 @@ pre_exec = "go mod tidy"
 exec_command = "go run main.go"
 # Runs when a file reload is triggered after killing the previous process
 post_exec = ""
-# debug | info | warn | error | fatal
+# debug | info | warn | error | mute
 # Defaults to Info if not provided
 log_level = "info" 
 # Debounce setting for ignoring reptitive file system notifications
