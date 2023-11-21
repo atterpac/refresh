@@ -7,7 +7,7 @@ Hotato (hot potato) is CLI tool for hot reloading your codebase based on file sy
 ## Key Features
 - Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples built-in FSEvents.
 - Allows for customization via code / config file / cli flags
-- Extended customization when used as a library using reloadCallback to bypass gotato rulesets and add addtional logic/logging on your applications end
+- Extended customization when used as a library using reloadCallback to bypass hotato rulesets and add addtional logic/logging on your applications end
 - Default slogger built in with the ablity to mute logs as well as pass in your own slog handler to be used in app
 - MIT licensed
 
@@ -49,7 +49,7 @@ hotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -i
 ```
 
 ## Embedding into your dev project
-There can be some uses where you might want to start a watcher internally or for a tool for development Gotato provides a function `NewEngineFromOptions` which takes an `hotato.Config` and allows for the `engine.Start()` function
+There can be some uses where you might want to start a watcher internally or for a tool for development Hotato provides a function `NewEngineFromOptions` which takes an `hotato.Config` and allows for the `engine.Start()` function
 
 Using hotato as a library also opens the ability to add a Callback [Callback](https://github.com/atterpac/hotato#reload-callback) function that is called on every FS notification
 
@@ -95,9 +95,9 @@ func main () {
 		Slog: nil, // Optionally provide a slog interface
                   // if nil a default will be provided
                   // If provided stdout will not be piped through gotato
-        Callback: func(*EventCallback) bool // Optionally provide a callback function to be called upon file notification events
-                                            // If callback returns true reload will process
-                                            // EventCallback is a struct of Name, Path, Time of the event
+
+		// Optionally provide a callback function to be called upon file notification events
+                Callback: func(*EventCallback) bool 
 	}
 	engine := hotato.NewEngineFromConfig(config)
 	engine.Start()
