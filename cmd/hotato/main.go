@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/atterpac/hotato/engine"
+	hotato "github.com/atterpac/hotato/engine"
 )
 
 func main() {
