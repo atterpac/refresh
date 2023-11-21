@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	var version string = "0.0.22"
+	var version string = "0.0.26"
 
 	var rootPath string
 	var preExec string
@@ -38,11 +38,11 @@ func main() {
 	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
 	flag.StringVar(&ignoreExt, "ie", "", "Ignore Extension list as comma-separated list")
 	flag.StringVar(&debounce, "d", "1000", "Debounce time in milliseconds")
-	flag.BoolVar(&versFlag, "v", false , "Print version")
+	flag.BoolVar(&versFlag, "v", false, "Print version")
 	flag.Parse()
 
 	if versFlag {
-		fmt.Println(version)
+		fmt.Println(PrintBanner(version))
 		os.Exit(0)
 	}
 
@@ -83,4 +83,19 @@ func stringSliceToMap(slice []string) map[string]bool {
 		m[v] = true
 	}
 	return m
+}
+func PrintBanner(ver string) string{
+	return fmt.Sprintf(`
+      ___           ___                       ___                       ___     
+     /__/\         /  /\          ___        /  /\          ___        /  /\    
+     \  \:\       /  /::\        /  /\      /  /::\        /  /\      /  /::\   
+      \__\:\     /  /:/\:\      /  /:/     /  /:/\:\      /  /:/     /  /:/\:\  
+  ___ /  /::\   /  /:/  \:\    /  /:/     /  /:/~/::\    /  /:/     /  /:/  \:\ 
+ /__/\  /:/\:\ /__/:/ \__\:\  /  /::\    /__/:/ /:/\:\  /  /::\    /__/:/ \__\:\
+ \  \:\/:/__\/ \  \:\ /  /:/ /__/:/\:\   \  \:\/:/__\/ /__/:/\:\   \  \:\ /  /:/
+  \  \::/       \  \:\  /:/  \__\/  \:\   \  \::/      \__\/  \:\   \  \:\  /:/ 
+   \  \:\        \  \:\/:/        \  \:\   \  \:\           \  \:\   \  \:\/:/  
+    \  \:\        \  \::/          \__\/    \  \:\           \__\/    \  \::/   
+     \__\/         \__\/                     \__\/                     \__\/    v%s 
+`, ver)
 }
