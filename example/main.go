@@ -7,14 +7,14 @@ import (
 func main() {
 	ignore := hotato.Ignore{
 		File:      map[string]bool{"ignore.go": true},
-		Dir:       map[string]bool{"ignoreme": true},
+		Dir:       map[string]bool{"test/ignoreme": true},
 		Extension: map[string]bool{".txt": true},
 	}
 	config := hotato.Config{
 		RootPath:    "./test",
 		PreExec:     "go mod tidy",
 		ExecCommand: "go run main.go",
-		LogLevel:    "info",
+		LogLevel:    "debug",
 		Ignore:      ignore,
 		Debounce:    1000,
 	}

@@ -44,6 +44,7 @@ func isTmp(path string) bool {
 func isIgnoreDir(path string, Dirmap map[string]bool) bool {
 	dirs := strings.Split(path, string(filepath.Separator))
 	for _, dir := range dirs {
+		slog.Debug("Checking ignore", "dir", dir)
 		if Dirmap[dir] {
 			return true
 		}
