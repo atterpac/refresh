@@ -2,8 +2,6 @@ module hotato
 
 go 1.21.1
 
-replace github.com/atterpac/hotato => ../../
-
 require github.com/atterpac/hotato v0.0.4
 
 require (
