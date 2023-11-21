@@ -11,6 +11,8 @@ import (
 )
 
 func main() {
+	var version string = "0.0.22"
+
 	var rootPath string
 	var preExec string
 	var execCommand string
@@ -19,6 +21,7 @@ func main() {
 	var configPath string
 	var debounce string
 	var watch *hotato.Engine
+	var versFlag bool
 
 	// Ignore
 	var ignoreDir string
@@ -35,7 +38,13 @@ func main() {
 	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
 	flag.StringVar(&ignoreExt, "ie", "", "Ignore Extension list as comma-separated list")
 	flag.StringVar(&debounce, "d", "1000", "Debounce time in milliseconds")
+	flag.BoolVar(&versFlag, "v", false , "Print version")
 	flag.Parse()
+
+	if len(version) != 0 {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	// TODO: Make file config able to be overridden by cli
 	if len(configPath) != 0 {
