@@ -167,7 +167,7 @@ Callbacks should return an refresh.EventHandle
 type EventCallback struct {
 	Type Event  // Type of Notification (Write/Create/Remove...)
 	Time time.Time // time.Now() when event was triggered
-	Path string    // Full path to the modified file
+	Path string    // Relative path based on root if root is ./myProject paths start with "myProject/..."
 }
 // Available returns from the Callback function
 const (
