@@ -41,7 +41,7 @@ func main() {
 	flag.BoolVar(&versFlag, "v", false , "Print version")
 	flag.Parse()
 
-	if len(version) != 0 {
+	if versFlag {
 		fmt.Println(version)
 		os.Exit(0)
 	}

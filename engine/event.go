@@ -13,7 +13,7 @@ type EventInfo struct {
 // Called whenever a change is detected in the filesystem
 // By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
 type EventCallback struct {
-	Name Event    // Event enum
+	Type Event    // Event enum
 	Time time.Time // time.Now() when event was triggered
 	Path string    // Full path to the modified file
 }

@@ -97,7 +97,7 @@ func main () {
                   // If provided stdout will not be piped through gotato
 
 		// Optionally provide a callback function to be called upon file notification events
-                Callback: func(*EventCallback) bool 
+                Callback: func(*EventCallback) EventHandle 
 	}
 	engine := hotato.NewEngineFromConfig(config)
 	engine.Start()
@@ -165,7 +165,7 @@ Callbacks should return an hotato.EventHandle
 // Called whenever a change is detected in the filesystem
 // By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
 type EventCallback struct {
-	Name Event  // Type of Notification (Write/Create/Remove...)
+	Type Event  // Type of Notification (Write/Create/Remove...)
 	Time time.Time // time.Now() when event was triggered
 	Path string    // Full path to the modified file
 }
@@ -175,21 +175,27 @@ const (
 	EventBypass
 	EventIgnore
 )
-// Example
-func Callback(e *gotato.EventCallBack) (hotato.Event) {
-    // Ignore create file notif
-    if e.Name == hotato.Create {
-        return hotato.EventIgnore
-    }
-    // Continue as normal for write but add some logs / logic
-    if e.Name == hotato.Write{
-        fmt.Println("Wow a write was done yay")
-        return hotato.EventContinue
-    }
-    // Default would normally ignore a remove function, both reload and bypass being true would force a reload 
-    if e.Name == hotato.Remove{
-        return hotato.EventBypass
-    }
+
+func ExampleCallback(e hotato.EventCallback) hotato.EventHandle {
+	switch e.Type {
+	case hotato.Create:
+		// Continue with reload process based on configured ruleset
+		return hotato.EventContinue
+	case hotato.Write:
+		// Ignore a file that would normally trigger a reload based on config
+		if e.Path == "./path/to/watched/file" {
+			return hotato.EventIgnore
+		}
+		// Continue with reload ruleset but add some extra logs/logic
+		fmt.Println("File Modified: %s", e.Path)	
+		return EventContinue
+	case hotato.Remove:
+		// Hotato will ignore this event by default
+		// Return EventBypass to force reload process
+		return hotato.EventBypass
+	}
+	return hotato.EventContinue
+}
 ```
 ### Config File
 
