@@ -17,17 +17,16 @@ func main() {
 		LogLevel:    "debug",
 		Ignore:      ignore,
 		Debounce:    1000,
-		Callback:    HotatoCallback,
-		Slog: nil,
+		Callback:    RefreshCallback,
+		Slog:        nil,
 	}
 	watch := refresh.NewEngineFromConfig(config)
-
 
 	watch.Start()
 	<-make(chan struct{})
 }
 
-func HotatoCallback(e *refresh.EventCallback) refresh.EventHandle {
+func RefreshCallback(e *refresh.EventCallback) refresh.EventHandle {
 	switch e.Type {
 	case refresh.Create:
 		return refresh.EventIgnore
@@ -38,7 +37,7 @@ func HotatoCallback(e *refresh.EventCallback) refresh.EventHandle {
 		return refresh.EventContinue
 	case refresh.Remove:
 		return refresh.EventContinue
-	// Other Hotato Event Types...
+		// Other Hotato Event Types...
 	}
 	return refresh.EventContinue
 }

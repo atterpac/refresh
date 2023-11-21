@@ -97,7 +97,7 @@ func main () {
                   // If provided stdout will not be piped through gotato
 
 		// Optionally provide a callback function to be called upon file notification events
-                Callback: func(*EventCallback) EventHandle 
+        Callback: func(*EventCallback) EventHandle 
 	}
 	engine := refresh.NewEngineFromConfig(config)
 	engine.Start()

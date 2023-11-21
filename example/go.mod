@@ -2,7 +2,7 @@ module example
 
 go 1.21.1
 
-require github.com/atterpac/refesh v0
+require github.com/atterpac/refresh v0.1.0
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
