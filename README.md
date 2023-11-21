@@ -1,8 +1,8 @@
 # :construction: EARLY DEVELOPMENT :construction:
 This is a small tool I have built that is largely untested off of my machine. You are welcome to try it and if you notice any issues report them on the github and I will look into them.
 
-## HOTATO Hot Reload
-Hotato (hot potato) is CLI tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify) with the ablity to use as a golang library in your own projects.
+## Refresh Hot Reload
+Refresh is CLI tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify) with the ablity to use as a golang library in your own projects.
 
 ## Key Features
 - Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples built-in FSEvents.
