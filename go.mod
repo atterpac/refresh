@@ -1,9 +1,10 @@
-module github.com/atterpac/hotato
+module github.com/atterpac/hotato/engine
 
 go 1.21.1
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/atterpac/hotato v0.0.21
 	github.com/lmittmann/tint v1.0.3
 	github.com/rjeczalik/notify v0.9.3
 	github.com/shirou/gopsutil v3.21.11+incompatible
