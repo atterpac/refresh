@@ -7,18 +7,18 @@ Hotato (hot potato) is CLI tool for hot reloading your codebase based on file sy
 ## Key Features
 - Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples built-in FSEvents.
 - Allows for customization via code / config file / cli flags
-- Extended customization when used as a library using reloadCallback to bypass hotato rulesets and add addtional logic/logging on your applications end
+- Extended customization when used as a library using reloadCallback to bypass refresh rulesets and add addtional logic/logging on your applications end
 - Default slogger built in with the ablity to mute logs as well as pass in your own slog handler to be used in app
 - MIT licensed
 
 ## Install
 Installing via go CLI is the easiest method more methods are on the list
 ```bash
-go install github.com/atterpac/hotato/cmd/hotato@latest
+go install github.com/atterpac/refresh/cmd/refesh@latest
 ```
 Alternative if you wish to use as a package and not a cli
 ```bash
-go get github.com/atterpac/hotato
+go get github.com/atterpac/refresh
 ```
 ## Usage
 
@@ -33,7 +33,7 @@ go get github.com/atterpac/hotato
 
 `-l` Log Level to display options can include `"debug", "info","warn","error"`
 
-`-f` path to a TOML config file see [Config File](https://github.com/atterpac/hotato#config-file) for details on the format of config
+`-f` path to a TOML config file see [Config File](https://github.com/atterpac/refresh#config-file) for details on the format of config
 
 `-id` Ignore directories provided as a comma-separated list
 
@@ -45,13 +45,13 @@ go get github.com/atterpac/hotato
 
 #### Example
 ```bash
-hotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
+refresh -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
 ```
 
 ## Embedding into your dev project
-There can be some uses where you might want to start a watcher internally or for a tool for development Hotato provides a function `NewEngineFromOptions` which takes an `hotato.Config` and allows for the `engine.Start()` function
+There can be some uses where you might want to start a watcher internally or for a tool for development Hotato provides a function `NewEngineFromOptions` which takes an `refresh.Config` and allows for the `engine.Start()` function
 
-Using hotato as a library also opens the ability to add a Callback [Callback](https://github.com/atterpac/hotato#reload-callback) function that is called on every FS notification
+Using refresh as a library also opens the ability to add a Callback [Callback](https://github.com/atterpac/refresh#reload-callback) function that is called on every FS notification
 
 ### Structs
 ```go
@@ -77,16 +77,16 @@ type Ignore struct {
 ### Example
 ```go
 import ( // other imports
-    "github.com/atterpac/hotato/engine"
+     refresh "github.com/atterpac/refresh/engine"
     )
 
 func main () {
-	ignore := hotato.Ignore{
+	ignore := refresh.Ignore{
 		File:      map[string]bool{{"ignore.go",true},{".env", true}},
 		Dir:       map[string]bool{{".git",true},{"node_modules", true}},
 		Extension: map[string]bool{{".txt",true},{".db", true}},
 	}
-	config := hotato.Config{
+	config := refresh.Config{
 		RootPath:    "./subExecProcess",
 		ExecCommand: "go run main.go",
 		LogLevel:    "info", // debug | info | warn | error | mute (discards all logs)
@@ -99,7 +99,7 @@ func main () {
 		// Optionally provide a callback function to be called upon file notification events
                 Callback: func(*EventCallback) EventHandle 
 	}
-	engine := hotato.NewEngineFromConfig(config)
+	engine := refresh.NewEngineFromConfig(config)
 	engine.Start()
 
 	// Stop monitoring files and kill child processes
@@ -110,7 +110,7 @@ func main () {
 
 #### Event Types
 The following are all the file system event types that can be passed into the callback functions.
-Important to note that some actions only are emitted are certain OSs and you may have to handle those if you wish to bypass hotato rulesets 
+Important to note that some actions only are emitted are certain OSs and you may have to handle those if you wish to bypass refresh rulesets 
 ```go
 const (
     // Base Actions
@@ -153,13 +153,13 @@ const (
 
 Below describes the data that you recieve in the callback function as well as an example of how this could be used.
 
-Callbacks should return an hotato.EventHandle
+Callbacks should return an refresh.EventHandle
 
-`hotato.EventContinue` continues with the reload process as normal and follows the hotato ruleset defined in the config
+`refresh.EventContinue` continues with the reload process as normal and follows the hotato ruleset defined in the config
 
-`hotato.EventBypass` disregards all config rulesets and restarts the exec process
+`refresh.EventBypass` disregards all config rulesets and restarts the exec process
 
-`hotato.EventIgnore` ignores the event and continues monitoring
+`refresh.EventIgnore` ignores the event and continues monitoring
 
 ```go
 // Called whenever a change is detected in the filesystem
@@ -176,32 +176,32 @@ const (
 	EventIgnore
 )
 
-func ExampleCallback(e hotato.EventCallback) hotato.EventHandle {
+func ExampleCallback(e refresh.EventCallback) hotato.EventHandle {
 	switch e.Type {
-	case hotato.Create:
+	case refresh.Create:
 		// Continue with reload process based on configured ruleset
-		return hotato.EventContinue
-	case hotato.Write:
+		return refresh.EventContinue
+	case refresh.Write:
 		// Ignore a file that would normally trigger a reload based on config
 		if e.Path == "./path/to/watched/file" {
-			return hotato.EventIgnore
+			return refresh.EventIgnore
 		}
 		// Continue with reload ruleset but add some extra logs/logic
 		fmt.Println("File Modified: %s", e.Path)	
 		return EventContinue
-	case hotato.Remove:
+	case refresh.Remove:
 		// Hotato will ignore this event by default
 		// Return EventBypass to force reload process
-		return hotato.EventBypass
+		return refresh.EventBypass
 	}
-	return hotato.EventContinue
+	return refresh.EventContinue
 }
 ```
 ### Config File
 
-If you would prefer to load from a [config](https://github.com/Atterpac/hotato#config-file) file rather than building the structs you can use 
+If you would prefer to load from a [config](https://github.com/Atterpac/refresh#config-file) file rather than building the structs you can use 
 ```go
-hotato.NewEngineFromTOML("path/to/toml")
+refresh.NewEngineFromTOML("path/to/toml")
 ```
 #### Example Config
 ```toml

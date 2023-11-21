@@ -7,11 +7,11 @@ import (
 	"strconv"
 	"strings"
 
-	hotato "github.com/atterpac/hotato/engine"
+	refresh "github.com/atterpac/refresh/engine"
 )
 
 func main() {
-	var version string = "0.0.26"
+	var version string = "0.1.0"
 
 	var rootPath string
 	var preExec string
@@ -20,7 +20,7 @@ func main() {
 	var logLevel string
 	var configPath string
 	var debounce string
-	var watch *hotato.Engine
+	var watch *refresh.Engine
 	var versFlag bool
 
 	// Ignore
@@ -48,9 +48,9 @@ func main() {
 
 	// TODO: Make file config able to be overridden by cli
 	if len(configPath) != 0 {
-		watch = hotato.NewEngineFromTOML(configPath)
+		watch = refresh.NewEngineFromTOML(configPath)
 	} else {
-		ignore := hotato.Ignore{
+		ignore := refresh.Ignore{
 			File:      stringSliceToMap(strings.Split(ignoreFile, ",")),
 			Dir:       stringSliceToMap(strings.Split(ignoreDir, ",")),
 			Extension: stringSliceToMap(strings.Split(ignoreExt, ",")),
@@ -61,7 +61,7 @@ func main() {
 			os.Exit(1)
 		}
 		// Debounce string to int
-		config := hotato.Config{
+		config := refresh.Config{
 			RootPath:    rootPath,
 			PreExec:     preExec,
 			PostExec:    postExec,
@@ -70,7 +70,7 @@ func main() {
 			Ignore:      ignore,
 			Debounce:    debounceThreshold,
 		}
-		watch = hotato.NewEngineFromConfig(config)
+		watch = refresh.NewEngineFromConfig(config)
 	}
 
 	watch.Start()
@@ -84,18 +84,19 @@ func stringSliceToMap(slice []string) map[string]bool {
 	}
 	return m
 }
+
 func PrintBanner(ver string) string{
 	return fmt.Sprintf(`
-      ___           ___                       ___                       ___     
-     /__/\         /  /\          ___        /  /\          ___        /  /\    
-     \  \:\       /  /::\        /  /\      /  /::\        /  /\      /  /::\   
-      \__\:\     /  /:/\:\      /  /:/     /  /:/\:\      /  /:/     /  /:/\:\  
-  ___ /  /::\   /  /:/  \:\    /  /:/     /  /:/~/::\    /  /:/     /  /:/  \:\ 
- /__/\  /:/\:\ /__/:/ \__\:\  /  /::\    /__/:/ /:/\:\  /  /::\    /__/:/ \__\:\
- \  \:\/:/__\/ \  \:\ /  /:/ /__/:/\:\   \  \:\/:/__\/ /__/:/\:\   \  \:\ /  /:/
-  \  \::/       \  \:\  /:/  \__\/  \:\   \  \::/      \__\/  \:\   \  \:\  /:/ 
-   \  \:\        \  \:\/:/        \  \:\   \  \:\           \  \:\   \  \:\/:/  
-    \  \:\        \  \::/          \__\/    \  \:\           \__\/    \  \::/   
-     \__\/         \__\/                     \__\/                     \__\/    v%s 
+      ___           ___           ___         ___           ___           ___           ___     
+     /  /\         /  /\         /  /\       /  /\         /  /\         /  /\         /__/\    
+    /  /::\       /  /:/_       /  /:/_     /  /::\       /  /:/_       /  /:/_        \  \:\   
+   /  /:/\:\     /  /:/ /\     /  /:/ /\   /  /:/\:\     /  /:/ /\     /  /:/ /\        \__\:\  
+  /  /:/~/:/    /  /:/ /:/_   /  /:/ /:/  /  /:/~/:/    /  /:/ /:/_   /  /:/ /::\   ___ /  /::\ 
+ /__/:/ /:/___ /__/:/ /:/ /\ /__/:/ /:/  /__/:/ /:/___ /__/:/ /:/ /\ /__/:/ /:/\:\ /__/\  /:/\:\
+ \  \:\/:::::/ \  \:\/:/ /:/ \  \:\/:/   \  \:\/:::::/ \  \:\/:/ /:/ \  \:\/:/~/:/ \  \:\/:/__\/
+  \  \::/~~~~   \  \::/ /:/   \  \::/     \  \::/~~~~   \  \::/ /:/   \  \::/ /:/   \  \::/     
+   \  \:\        \  \:\/:/     \  \:\      \  \:\        \  \:\/:/     \__\/ /:/     \  \:\     
+    \  \:\        \  \::/       \  \:\      \  \:\        \  \::/        /__/:/       \  \:\    
+     \__\/         \__\/         \__\/       \__\/         \__\/         \__\/         \__\/  v%s 
 `, ver)
 }

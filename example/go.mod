@@ -2,7 +2,7 @@ module example
 
 go 1.21.1
 
-require github.com/atterpac/hotato v0.0.26
+require github.com/atterpac/refesh v0
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
@@ -19,4 +19,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/atterpac/hotato => ../
+replace github.com/atterpac/refresh => ../

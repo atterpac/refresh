@@ -1,4 +1,4 @@
-module github.com/atterpac/hotato
+module github.com/atterpac/refresh
 
 go 1.21.1
 

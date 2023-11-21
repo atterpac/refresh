@@ -1,16 +1,16 @@
 package main
 
 import (
-	hotato "github.com/atterpac/hotato/engine"
+	refresh "github.com/atterpac/refresh/engine"
 )
 
 func main() {
-	ignore := hotato.Ignore{
+	ignore := refresh.Ignore{
 		File:      map[string]bool{"ignore.go": true},
 		Dir:       map[string]bool{"ignoreme": true},
 		Extension: map[string]bool{".txt": true},
 	}
-	config := hotato.Config{
+	config := refresh.Config{
 		RootPath:    "./test",
 		PreExec:     "go mod tidy",
 		ExecCommand: "go run main.go",
@@ -20,25 +20,25 @@ func main() {
 		Callback:    HotatoCallback,
 		Slog: nil,
 	}
-	watch := hotato.NewEngineFromConfig(config)
+	watch := refresh.NewEngineFromConfig(config)
 
 
 	watch.Start()
 	<-make(chan struct{})
 }
 
-func HotatoCallback(e *hotato.EventCallback) hotato.EventHandle {
+func HotatoCallback(e *refresh.EventCallback) refresh.EventHandle {
 	switch e.Type {
-	case hotato.Create:
-		return hotato.EventIgnore
-	case hotato.Write:
+	case refresh.Create:
+		return refresh.EventIgnore
+	case refresh.Write:
 		if e.Path == "test/monitored/ignore.go" {
-			return hotato.EventBypass
+			return refresh.EventBypass
 		}
-		return hotato.EventContinue
-	case hotato.Remove:
-		return hotato.EventContinue
+		return refresh.EventContinue
+	case refresh.Remove:
+		return refresh.EventContinue
 	// Other Hotato Event Types...
 	}
-	return hotato.EventContinue
+	return refresh.EventContinue
 }
