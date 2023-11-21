@@ -17,9 +17,28 @@ func main() {
 		LogLevel:    "debug",
 		Ignore:      ignore,
 		Debounce:    1000,
+		Callback:    HotatoCallback,
+		Slog: nil,
 	}
 	watch := hotato.NewEngineFromConfig(config)
 
+
 	watch.Start()
 	<-make(chan struct{})
+}
+
+func HotatoCallback(e *hotato.EventCallback) hotato.EventHandle {
+	switch e.Type {
+	case hotato.Create:
+		return hotato.EventIgnore
+	case hotato.Write:
+		if e.Path == "test/monitored/ignore.go" {
+			return hotato.EventBypass
+		}
+		return hotato.EventContinue
+	case hotato.Remove:
+		return hotato.EventContinue
+	// Other Hotato Event Types...
+	}
+	return hotato.EventContinue
 }

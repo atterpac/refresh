@@ -39,16 +39,17 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			handle := engine.Config.Callback(&EventCallback{
 				Type: event,
 				Time: time.Now(),
-				Path: ei.Path(),
+				Path: getPath(ei.Path()),
 			})
 			switch handle {
 			case EventContinue: // Continue with reload process as eventMap and ignore rules dictate
 			case EventBypass: // Bypass all rulesets and reload process
+				slog.Debug("Bypassing all rulesets and reloading process...")
 				engine.Process = engine.reloadProcess()
+				continue
 			case EventIgnore:// Ignore Event and continue with monitoring
 				continue
 			default:
-				continue
 			}
 		}
 		if eventInfo.Reload {
