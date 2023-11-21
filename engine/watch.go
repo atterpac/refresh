@@ -21,7 +21,7 @@ type EventInfo struct {
 // reload: if true will reload the process as long as the eventMap allows it
 // bypass: if true will bypass the eventMap and reload the process regardless of the eventMap instruction
 type EventCallback struct {
-	Name string    // rjeczalik/notify.[EVENT]
+	Name Event    // rjeczalik/notify.[EVENT]
 	Time time.Time // time.Now() when event was triggered
 	Path string    // Full path to the modified file
 }
@@ -52,8 +52,9 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			continue
 		}
 		if engine.Config.Callback != nil {
+			event, _ := CallbackMap[ei.Event()]
 			reload, bypass := engine.Config.Callback(&EventCallback{
-				Name: ei.Event().String(),
+				Name: event,
 				Time: time.Now(),
 				Path: ei.Path(),
 			})

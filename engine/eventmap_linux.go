@@ -18,3 +18,32 @@ var eventMap = map[notify.Event]EventInfo{
 	notify.Remove:       {Name: "Remove", Reload: false},
 	notify.Rename:       {Name: "Rename", Reload: false},
 }
+
+var CallbackMap = map[notify.Event]Event{
+	notify.InCloseWrite: InCloseWrite,
+	notify.InModify:     InModify,
+	notify.InMovedTo:    InMovedTo,
+	notify.InMovedFrom:  InMovedFrom,
+	notify.InCreate:     InCreate,
+	notify.InDelete:     InDelete,
+	notify.Write:        Write,
+	notify.Create:       Create,
+	notify.Remove:       Remove,
+	notify.Rename:       Rename,
+}
+
+type Event int
+
+const (
+	Create Event = iota
+	Write
+	Remove
+	Rename
+	// Linux Specific Actions
+	InCloseWrite
+	InModify
+	InMovedTo
+	InMovedFrom
+	InCreate
+	InDelete
+)

@@ -1,4 +1,4 @@
-module github.com/atterpac/gotato
+module github.com/atterpac/hotato
 
 go 1.21.1
 

@@ -12,3 +12,20 @@ var eventMap = map[notify.Event]EventInfo{
 	notify.Remove: {Name: "Remove", Reload: false},
 	notify.Rename: {Name: "Rename", Reload: false},
 }
+
+var CallbackMap = map[notify.Event]Event{
+	notify.Write:  Write,
+	notify.Create: Create,
+	notify.Remove: Remove,
+	notify.Rename: Rename,
+}
+
+type Event int
+
+const (
+	Create Event = iota
+	Write
+	Remove
+	Rename
+)
+

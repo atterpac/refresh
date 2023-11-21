@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	tato "github.com/atterpac/gotato/engine"
+	"github.com/atterpac/hotato/engine"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	var logLevel string
 	var configPath string
 	var debounce string
-	var watch *tato.Engine
+	var watch *hotato.Engine
 
 	// Ignore
 	var ignoreDir string
@@ -39,9 +39,9 @@ func main() {
 
 	// TODO: Make file config able to be overridden by cli
 	if len(configPath) != 0 {
-		watch = tato.NewEngineFromTOML(configPath)
+		watch = hotato.NewEngineFromTOML(configPath)
 	} else {
-		ignore := tato.Ignore{
+		ignore := hotato.Ignore{
 			File:      stringSliceToMap(strings.Split(ignoreFile, ",")),
 			Dir:       stringSliceToMap(strings.Split(ignoreDir, ",")),
 			Extension: stringSliceToMap(strings.Split(ignoreExt, ",")),
@@ -52,7 +52,7 @@ func main() {
 			os.Exit(1)
 		}
 		// Debounce string to int
-		config := tato.Config{
+		config := hotato.Config{
 			RootPath:    rootPath,
 			PreExec:     preExec,
 			PostExec:    postExec,
@@ -61,7 +61,7 @@ func main() {
 			Ignore:      ignore,
 			Debounce:    debounceThreshold,
 		}
-		watch = tato.NewEngineFromConfig(config)
+		watch = hotato.NewEngineFromConfig(config)
 	}
 
 	watch.Start()

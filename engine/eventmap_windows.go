@@ -25,3 +25,46 @@ var eventMap = map[notify.Event]EventInfo{
 	notify.Remove:                     {Name: "Remove", Reload: false},
 	notify.Rename:                     {Name: "Rename", Reload: false},
 }
+
+var CallbackMap = map[notify.Event]Event{
+	notify.FileNotifyChangeLastWrite:  ChangeLastWrite,
+	notify.FileActionModified:         ActionModified,
+	notify.FileActionRenamedNewName:   ActionRenamedNewName,
+	notify.FileActionRenamedOldName:   ActionRenamedOldName,
+	notify.FileActionAdded:            ActionAdded,
+	notify.FileActionRemoved:          ActionRemoved,
+	notify.FileNotifyChangeAttributes: ChangeAttributes,
+	notify.FileNotifyChangeSize:       ChangeSize,
+	notify.FileNotifyChangeDirName:    ChangeDirName,
+	notify.FileNotifyChangeFileName:   ChangeFileName,
+	notify.FileNotifyChangeSecurity:   ChangeSecurity,
+	notify.FileNotifyChangeCreation:   ChangeCreation,
+	notify.FileNotifyChangeLastAccess: ChangeLastAccess,
+	notify.Write:                      Write,
+	notify.Create:                     Create,
+	notify.Remove:                     Remove,
+	notify.Rename:                     Rename,
+}
+
+type Event int
+
+const (
+	Create Event = iota
+	Write
+	Remove
+	Rename
+	// Windows Specific Actions
+	ActionModified
+	ActionRenamedNewName
+	ActionRenamedOldName
+	ActionAdded
+	ActionRemoved
+	ChangeLastWrite
+	ChangeAttributes
+	ChangeSize
+	ChangeDirName
+	ChangeFileName
+	ChangeSecurity
+	ChangeCreation
+	ChangeLastAccess
+)

@@ -1,17 +1,17 @@
 # :construction: EARLY DEVELOPMENT :construction:
 This is a small tool I have built that is largely untested off of my machine. You are welcome to try it and if you notice any issues report them on the github and I will look into them.
 
-## GOTATO Hot Reload
-Gotato (golang hot potato) is a tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify)
+## HOTATO Hot Reload
+Hotato (hot potato) is a tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify)
 
 ## Install
 Installing via go CLI is the easiest method more methods are on the list
 ```bash
-go install github.com/atterpac/gotato/cmd/gotato@latest
+go install github.com/atterpac/hotato/cmd/hotato@latest
 ```
 Alternative if you wish to use as a package and not a cli
 ```bash
-go get github.com/atterpac/gotato
+go get github.com/atterpac/hotato
 ```
 ## Usage
 
@@ -26,7 +26,7 @@ go get github.com/atterpac/gotato
 
 `-l` Log Level to display options can include `"debug", "info","warn","error"`
 
-`-f` path to a TOML config file see [Config File](https://github.com/Atterpac/gotato#config-file) for details on the format of config
+`-f` path to a TOML config file see [Config File](https://github.com/Atterpac/hotato#config-file) for details on the format of config
 
 `-id` Ignore directories provided as a comma-separated list
 
@@ -38,7 +38,7 @@ go get github.com/atterpac/gotato
 
 #### Example
 ```bash
-gotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
+hotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
 ```
 
 ### Embedding into your dev project
@@ -69,16 +69,16 @@ type Ignore struct {
 
 ```go
 import ( // other imports
-    "github.com/atterpac/gotato/engine"
+    "github.com/atterpac/hotato/engine"
     )
 
 func main () {
-	ignore := gotato.Ignore{
+	ignore := hotato.Ignore{
 		File:      map[string]bool{{"ignore.go",true},{".env", true}},
 		Dir:       map[string]bool{{".git",true},{"node_modules", true}},
 		Extension: map[string]bool{{".txt",true},{".db", true}},
 	}
-	config := gotato.Config{
+	config := hotato.Config{
 		RootPath:    "./subExecProcess",
 		ExecCommand: "go run main.go",
 		LogLevel:    "info", // debug | info | warn | error | mute (discards all logs)
@@ -104,39 +104,39 @@ Callback data structure
 // By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
 // Callback returns two booleans reload and bypass
 // reload: if true will reload the process as long as the eventMap allows it
-// bypass: if true will bypass the eventMap and reload the process regardless of the eventMap instruction
+// bypass: if true will bypass the eventMap and reload the process regardless of any hotato ruleset
 type EventCallback struct {
-	Name string    // rjeczalik/notify.[EVENT]
+	Name Event  // Type of Notification (Write/Create/Remove...)
 	Time time.Time // time.Now() when event was triggered
 	Path string    // Full path to the modified file
 }
 
 func CallbackExample(e *gotato.EventCallBack) (bool, bool) {
     // Ignore create file notif
-    if e.Name == notify.Create {
+    if e.Name == hotato.Create {
         return false, false
     }
     // Continue as normal for write but add some logs
-    if e.Name == notify.Write{
+    if e.Name == hotato.Write{
         fmt.Println("Wow a write was done")
         return true, false
     }
     // Default would normally ignore a remove function, both reload and bypass being true would force a reload 
-    if e.Name == notify.Remove{
+    if e.Name == hotato.Remove{
         return true, true
     }
 ```
 
-If you would prefer to load from a [config](https://github.com/Atterpac/gotato#config-file) file rather than building the structs you can use 
+If you would prefer to load from a [config](https://github.com/Atterpac/hotato#config-file) file rather than building the structs you can use 
 ```go
 
-gotato.NewEngineFromTOML("path/to/toml")
+hotato.NewEngineFromTOML("path/to/toml")
 ```
 
 ### Config File
 Gotato is able to read a config from a .toml file and passed in through the `-f /path/to/config` and example file is provided but should follow the following format
 
-Config can be used with `gotato -f /path/to/config.toml`
+Config can be used with `hotato -f /path/to/config.toml`
 
 ```toml
 [config]
