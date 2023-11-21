@@ -14,11 +14,11 @@ Hotato (hot potato) is a tool for hot reloading your codebase based on file syst
 ## Install
 Installing via go CLI is the easiest method more methods are on the list
 ```bash
-go install github.com/atterpac/hotato/cmd/hotato@latest
+go install github.com/Atterpac/hotato/cmd/hotato@latest
 ```
 Alternative if you wish to use as a package and not a cli
 ```bash
-go get github.com/atterpac/hotato
+go get github.com/Atterpac/hotato
 ```
 ## Usage
 
