@@ -5,20 +5,20 @@ This is a small tool I have built that is largely untested off of my machine. Yo
 Hotato (hot potato) is CLI tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify) with the ablity to use as a golang library in your own projects.
 
 ## Key Features
-- Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples FSEvents.
+- Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples built-in FSEvents.
 - Allows for customization via code / config file / cli flags
-- Extended customization using reloadCallback to bypass gotato rulesets and add addtional logic/logging on your applications end
-- Default logger built in with the ablity to mute logs as well as pass in your own slog handler to be used in app
-- MIT licensed and built to be able to be used as a golang library or standalone CLI tool
+- Extended customization when used as a library using reloadCallback to bypass gotato rulesets and add addtional logic/logging on your applications end
+- Default slogger built in with the ablity to mute logs as well as pass in your own slog handler to be used in app
+- MIT licensed
 
 ## Install
 Installing via go CLI is the easiest method more methods are on the list
 ```bash
-go install github.com/Atterpac/hotato/cmd/hotato@latest
+go install github.com/atterpac/hotato/cmd/hotato@latest
 ```
 Alternative if you wish to use as a package and not a cli
 ```bash
-go get github.com/Atterpac/hotato
+go get github.com/atterpac/hotato
 ```
 ## Usage
 
@@ -33,7 +33,7 @@ go get github.com/Atterpac/hotato
 
 `-l` Log Level to display options can include `"debug", "info","warn","error"`
 
-`-f` path to a TOML config file see [Config File](https://github.com/Atterpac/hotato#config-file) for details on the format of config
+`-f` path to a TOML config file see [Config File](https://github.com/atterpac/hotato#config-file) for details on the format of config
 
 `-id` Ignore directories provided as a comma-separated list
 
@@ -51,7 +51,7 @@ hotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -i
 ### Embedding into your dev project
 There can be some uses where you might want to start a watcher internally or for a tool for development Gotato provides a function `NewEngineFromOptions` which takes an `gotato.Config` and allows for the `engine.Start()` function
 
-Using gotato as a library also opens the ability to add a Callback [Callback](https://github.com/Atterpac/gotato#reload-callback-function) function that is called on every FS notification
+Using gotato as a library also opens the ability to add a Callback [Callback](https://github.com/atterpac/gotato#reload-callback-function) function that is called on every FS notification
 
 ```go
 type Config struct {
