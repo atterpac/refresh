@@ -2,7 +2,7 @@
 # Just used in the TUI not required
 label = "My Project"
 # Relative to this files location
-root_path = "./test"
+root_path = "./example/test"
 # Runs prior to the exec command starting
 pre_exec = ""
 # Command to run on reload
@@ -17,9 +17,9 @@ debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
 [config.ignore]
 # Directories to ignore
-dir = [".git", "node_modules", "newdir"]
+dir = [".git", "node_modules", "ignoreme"]
 # Files to ignore
-file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
+file = [".DS_Store", ".gitignore", ".gitkeep", "ignore.go"]
 # File extensions to ignore
-extension = [".db", ".sqlite"]
+extension = [".db", ".sqlite", ".txt"]
 

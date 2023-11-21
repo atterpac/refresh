@@ -15,9 +15,9 @@ type Ignore struct {
 
 // Runs all ignore checks to decide if reload should happen
 func (i *Ignore) checkIgnore(path string) bool {
-	slog.Debug("Checking ignore", "path", path)
 	var dir, file, ext bool = false, false, false
 	basePath := filepath.Base(path)
+	slog.Debug("Checking ignore", "basepath", basePath)
 	if !isMapEmpty(i.Dir) {
 		dir = isIgnoreDir(path, i.Dir)
 	}
