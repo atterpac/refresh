@@ -45,26 +45,3 @@ var CallbackMap = map[notify.Event]Event{
 	notify.Remove:                     Remove,
 	notify.Rename:                     Rename,
 }
-
-type Event int
-
-const (
-	Create Event = iota
-	Write
-	Remove
-	Rename
-	// Windows Specific Actions
-	ActionModified
-	ActionRenamedNewName
-	ActionRenamedOldName
-	ActionAdded
-	ActionRemoved
-	ChangeLastWrite
-	ChangeAttributes
-	ChangeSize
-	ChangeDirName
-	ChangeFileName
-	ChangeSecurity
-	ChangeCreation
-	ChangeLastAccess
-)

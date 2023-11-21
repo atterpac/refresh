@@ -10,22 +10,6 @@ import (
 	"github.com/rjeczalik/notify"
 )
 
-type EventInfo struct {
-	Name   string
-	Reload bool
-}
-
-// Called whenever a change is detected in the filesystem
-// By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
-// Callback returns two booleans reload and bypass
-// reload: if true will reload the process as long as the eventMap allows it
-// bypass: if true will bypass the eventMap and reload the process regardless of the eventMap instruction
-type EventCallback struct {
-	Name Event    // rjeczalik/notify.[EVENT]
-	Time time.Time // time.Now() when event was triggered
-	Path string    // Full path to the modified file
-}
-
 func (engine *Engine) watch() {
 	// Start Exec Command
 	engine.Process = engine.reloadProcess()
@@ -42,7 +26,6 @@ func (engine *Engine) watch() {
 
 func watchEvents(engine *Engine, e chan notify.EventInfo) {
 	var debounceTime time.Time
-
 	var debounceThreshold = time.Duration(engine.Config.Debounce) * time.Millisecond
 	for {
 		ei := <-e
@@ -52,19 +35,22 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			continue
 		}
 		if engine.Config.Callback != nil {
-			event, _ := CallbackMap[ei.Event()]
-			reload, bypass := engine.Config.Callback(&EventCallback{
+			event := CallbackMap[ei.Event()]
+			handle := engine.Config.Callback(&EventCallback{
 				Name: event,
 				Time: time.Now(),
 				Path: ei.Path(),
 			})
-			if !reload {
+			switch handle {
+			case EventReload: // Continue with reload process as eventMap and ignore rules dictate
+				eventInfo.Reload = true
+			case EventBypass: // Bypass all rulesets and reload process
+				engine.Process = engine.reloadProcess()
+			case EventIgnore:// Ignore Event and continue with monitoring
+				continue
+			default:
 				continue
 			}
-			if bypass && reload {
-				engine.Process = engine.reloadProcess()
-			}
-			continue
 		}
 		if eventInfo.Reload {
 			// Check if file should be ignored
@@ -83,7 +69,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			// Continue with reload
 			relPath := getPath(ei.Path())
 			slog.Info(fmt.Sprintf("File Modified: %s", relPath))
-			slog.Warn("Reloading process...")
+			slog.Info("Reloading process...")
 			engine.Process = engine.reloadProcess()
 		}
 	}

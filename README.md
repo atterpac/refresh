@@ -7,7 +7,7 @@ Hotato (hot potato) is a tool for hot reloading your codebase based on file syst
 ## Key Features
 - Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples FSEvents.
 - Allows for customization via code / config file / cli flags
-- Extended customization using reloadCallback to bypass gotato rulesets and add addtional logic/logging on your applications end
+- Extended customization using reloadCallback to bypass hotato rulesets and add addtional logic/logging on your applications end
 - Default logger built in with the ablity to mute logs as well as pass in your own slog handler to be used in app
 - MIT licensed and built to be able to be used as a library or standalone CLI tool
 
@@ -48,27 +48,25 @@ go get github.com/Atterpac/hotato
 hotato -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
 ```
 
-### Embedding into your dev project
-There can be some uses where you might want to start a watcher internally or for a tool for development Gotato provides a function `NewEngineFromOptions` which takes an `gotato.Config` and allows for the `engine.Start()` function
+## Embedding into your dev project
+There can be some uses where you might want to start a watcher internally or for a tool for development Gotato provides a function `NewEngineFromOptions` which takes an `hotato.Config` and allows for the `engine.Start()` function
 
-Using gotato as a library also opens the ability to add a Callback [Callback](https://github.com/Atterpac/gotato#reload-callback-function) function that is called on every FS notification
+Using hotato as a library also opens the ability to add a Callback [Callback](https://github.com/atterpac/hotato#reload-callback) function that is called on every FS notification
 
+### Structs
 ```go
 type Config struct {
-	RootPath    string `toml:"root_path"`
-	PreExec     string `toml:"pre_exec"`
-	ExecCommand string `toml:"exec_command"`
-	PostExec    string `toml:"post_exec"`
-	// Ignore uses a custom unmarshaler see ignore.go
+	RootPath     string `toml:"root_path"`
+	PreExec      string `toml:"pre_exec"`
+	ExecCommand  string `toml:"exec_command"`
+	PostExec     string `toml:"post_exec"`
 	Ignore       Ignore `toml:"ignore"`
 	LogLevel     string `toml:"log_level"`
 	Debounce     int    `toml:"debounce"`
 	Slog         *slog.Logger
 	ExternalSlog bool
 }
-```
 
-```go 
 type Ignore struct {
 	Dir       map[string]bool `toml:"dir"`
 	File      map[string]bool `toml:"file"`
@@ -76,6 +74,7 @@ type Ignore struct {
 }
 ```
 
+### Example
 ```go
 import ( // other imports
     "github.com/atterpac/hotato/engine"
@@ -100,54 +99,109 @@ func main () {
                                             // If callback returns true reload will process
                                             // EventCallback is a struct of Name, Path, Time of the event
 	}
-	engine := gotato.NewEngineFromConfig(config)
+	engine := hotato.NewEngineFromConfig(config)
 	engine.Start()
 
 	// Stop monitoring files and kill child processes
 	engine.Stop()
 }
 ```
-Reload Callback Function
+### Reload Callback
+
+#### Event Types
+The following are all the file system event types that can be passed into the callback functions.
+Important to note that some actions only are emitted are certain OSs and you may have to handle those if you wish to bypass hotato rulesets 
+```go
+const (
+    // Base Actions
+	Create Event = iota
+	Write
+	Remove
+	Rename
+	// Windows Specific Actions
+	ActionModified
+	ActionRenamedNewName
+	ActionRenamedOldName
+	ActionAdded
+	ActionRemoved
+	ChangeLastWrite
+	ChangeAttributes
+	ChangeSize
+	ChangeDirName
+	ChangeFileName
+	ChangeSecurity
+	ChangeCreation
+	ChangeLastAccess
+	// Linux Specific Actions
+	InCloseWrite
+	InModify
+	InMovedTo
+	InMovedFrom
+	InCreate
+	InDelete
+)
+
+// Used as a response to the Callback 
+const (
+	EventContinue EventHandle = iota
+	EventBypass
+	EventIgnore
+)
+    
+```
+
+#### Callback Function
+
+Below describes the data that you recieve in the callback function as well as an example of how this could be used.
+
+Callbacks should return an hotato.EventHandle
+
+`hotato.EventContinue` continues with the reload process as normal and follows the hotato ruleset defined in the config
+
+`hotato.EventBypass` disregards all config rulesets and restarts the exec process
+
+`hotato.EventIgnore` ignores the event and continues monitoring
+
 ```go
 // Called whenever a change is detected in the filesystem
 // By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
-// Callback returns two booleans reload and bypass
-// reload: if true will reload the process as long as the eventMap allows it
-// bypass: if true will bypass the eventMap and reload the process regardless of any hotato ruleset
 type EventCallback struct {
 	Name Event  // Type of Notification (Write/Create/Remove...)
 	Time time.Time // time.Now() when event was triggered
 	Path string    // Full path to the modified file
 }
 
+// Available returns from the Callback function
+const (
+	EventContinue EventHandle = iota
+	EventBypass
+	EventIgnore
+)
+
 // Example
-func Callback(e *gotato.EventCallBack) (bool, bool) {
+func Callback(e *gotato.EventCallBack) (hotato.Event) {
     // Ignore create file notif
     if e.Name == hotato.Create {
-        return false, false
+        return hotato.EventIgnore
     }
-    // Continue as normal for write but add some logs
+    // Continue as normal for write but add some logs / logic
     if e.Name == hotato.Write{
-        fmt.Println("Wow a write was done")
-        return true, false
+        fmt.Println("Wow a write was done yay")
+        return hotato.EventContinue
     }
     // Default would normally ignore a remove function, both reload and bypass being true would force a reload 
     if e.Name == hotato.Remove{
-        return true, true
+        return hotato.EventBypass
     }
 ```
+### Config File
 
 If you would prefer to load from a [config](https://github.com/Atterpac/hotato#config-file) file rather than building the structs you can use 
 ```go
 
 hotato.NewEngineFromTOML("path/to/toml")
 ```
-
-### Config File
-Gotato is able to read a config from a .toml file and passed in through the `-f /path/to/config` and example file is provided but should follow the following format
-
-Config can be used with `hotato -f /path/to/config.toml`
-
+#### Example Config
 ```toml
 [config]
 # Relative to this files location

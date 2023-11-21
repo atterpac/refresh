@@ -20,12 +20,4 @@ var CallbackMap = map[notify.Event]Event{
 	notify.Rename: Rename,
 }
 
-type Event int
-
-const (
-	Create Event = iota
-	Write
-	Remove
-	Rename
-)
 
