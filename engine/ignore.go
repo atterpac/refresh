@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"log/slog"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -17,7 +16,6 @@ type Ignore struct {
 func (i *Ignore) checkIgnore(path string) bool {
 	var dir, file, ext bool = false, false, false
 	basePath := filepath.Base(path)
-	slog.Debug("Checking ignore", "basepath", basePath)
 	if !isMapEmpty(i.Dir) {
 		dir = isIgnoreDir(path, i.Dir)
 	}
@@ -32,7 +30,7 @@ func (i *Ignore) checkIgnore(path string) bool {
 }
 
 func isMapEmpty(m map[string]bool) bool {
-	return len(m) <= 1
+	return len(m) <= 0
 }
 
 // Checks if filepath ends in tilde returns true if it does
@@ -44,7 +42,6 @@ func isTmp(path string) bool {
 func isIgnoreDir(path string, Dirmap map[string]bool) bool {
 	dirs := strings.Split(path, string(filepath.Separator))
 	for _, dir := range dirs {
-		slog.Debug("Checking ignore", "dir", dir)
 		if Dirmap[dir] {
 			return true
 		}
