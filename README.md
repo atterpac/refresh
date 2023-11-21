@@ -147,7 +147,6 @@ const (
 	EventBypass
 	EventIgnore
 )
-    
 ```
 
 #### Callback Function
@@ -170,14 +169,12 @@ type EventCallback struct {
 	Time time.Time // time.Now() when event was triggered
 	Path string    // Full path to the modified file
 }
-
 // Available returns from the Callback function
 const (
 	EventContinue EventHandle = iota
 	EventBypass
 	EventIgnore
 )
-
 // Example
 func Callback(e *gotato.EventCallBack) (hotato.Event) {
     // Ignore create file notif
@@ -198,7 +195,6 @@ func Callback(e *gotato.EventCallBack) (hotato.Event) {
 
 If you would prefer to load from a [config](https://github.com/Atterpac/hotato#config-file) file rather than building the structs you can use 
 ```go
-
 hotato.NewEngineFromTOML("path/to/toml")
 ```
 #### Example Config
