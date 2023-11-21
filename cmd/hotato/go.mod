@@ -2,7 +2,7 @@ module hotato
 
 go 1.21.1
 
-require github.com/atterpac/hotato v0.0.4
+require github.com/atterpac/hotato v0.0.2
 
 require (
 	github.com/BurntSushi/toml v1.3.2 // indirect
