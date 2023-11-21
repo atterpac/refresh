@@ -1,8 +1,9 @@
+## Example should be ran using CLI hotato -f example.toml
 [config]
 # Just used in the TUI not required
 label = "My Project"
 # Relative to this files location
-root_path = "./example/test"
+root_path = "./test"
 # Runs prior to the exec command starting
 pre_exec = ""
 # Command to run on reload
@@ -17,9 +18,9 @@ debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
 [config.ignore]
 # Directories to ignore
-dir = [".git", "node_modules", "ignoreme"]
+dir = ["ignoreme"]
 # Files to ignore
-file = [".DS_Store", ".gitignore", ".gitkeep", "ignore.go"]
+file = ["ignore.go"]
 # File extensions to ignore
-extension = [".db", ".sqlite", ".txt"]
+extension = [".txt"]
 
