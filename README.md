@@ -94,7 +94,7 @@ func main () {
 		Debounce:    1000,
 		Slog: nil, // Optionally provide a slog interface
                   // if nil a default will be provided
-                  // If provided stdout will not be piped through gotato
+                  // If provided stdout will not be piped through refresh
 
 		// Optionally provide a callback function to be called upon file notification events
         	Callback: func(*EventCallback) EventHandle 
