@@ -1,4 +1,5 @@
-## Example should be ran using CLI hotato -f example.toml
+## Run this example in the refresh/example directory
+## refresh -f example.toml 
 [config]
 # Just used in the TUI not required
 label = "My Project"

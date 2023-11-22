@@ -48,7 +48,7 @@ refresh -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -
 ```
 
 ## Embedding into your dev project
-There can be some uses where you might want to start a watcher internally or for a tool for development Hotato provides a function `NewEngineFromOptions` which takes an `refresh.Config` and allows for the `engine.Start()` function
+There can be some uses where you might want to start a watcher internally or for a tool for development refresh provides a function `NewEngineFromOptions` which takes an `refresh.Config` and allows for the `engine.Start()` function
 
 Using refresh as a library also opens the ability to add a [Callback](https://github.com/atterpac/refresh#reload-callback) function that is called on every FS notification
 
@@ -175,7 +175,7 @@ const (
 	EventIgnore
 )
 
-func ExampleCallback(e refresh.EventCallback) hotato.EventHandle {
+func ExampleCallback(e refresh.EventCallback) refresh.EventHandle {
 	switch e.Type {
 	case refresh.Create:
 		// Continue with reload process based on configured ruleset
