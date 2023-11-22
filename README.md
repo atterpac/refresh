@@ -74,6 +74,7 @@ type Ignore struct {
 ```
 
 ### Example
+For a functioning example see ./example and run main.go below describes what declaring an engine could look like
 ```go
 import ( // other imports
      refresh "github.com/atterpac/refresh/engine"
@@ -81,9 +82,9 @@ import ( // other imports
 
 func main () {
 	ignore := refresh.Ignore{
-		File:      map[string]bool{{"ignore.go",true},{".env", true}},
-		Dir:       map[string]bool{{".git",true},{"node_modules", true}},
-		Extension: map[string]bool{{".txt",true},{".db", true}},
+		File:      map[string]bool{"ignore.go":true, ".gitignore"},
+		Dir:       map[string]bool{".git":true,"node_modules":true},
+		Extension: map[string]bool{".txt":true, ".db":true},
 	}
 	config := refresh.Config{
 		RootPath:    "./subExecProcess",
@@ -96,7 +97,7 @@ func main () {
                   // If provided stdout will not be piped through gotato
 
 		// Optionally provide a callback function to be called upon file notification events
-        Callback: func(*EventCallback) EventHandle 
+        	Callback: func(*EventCallback) EventHandle 
 	}
 	engine := refresh.NewEngineFromConfig(config)
 	engine.Start()
@@ -154,7 +155,7 @@ Below describes the data that you recieve in the callback function as well as an
 
 Callbacks should return an refresh.EventHandle
 
-`refresh.EventContinue` continues with the reload process as normal and follows the hotato ruleset defined in the config
+`refresh.EventContinue` continues with the reload process as normal and follows the refresh ruleset defined in the config
 
 `refresh.EventBypass` disregards all config rulesets and restarts the exec process
 
@@ -189,7 +190,7 @@ func ExampleCallback(e refresh.EventCallback) refresh.EventHandle {
 		fmt.Println("File Modified: %s", e.Path)	
 		return EventContinue
 	case refresh.Remove:
-		// Hotato will ignore this event by default
+		// refresh will ignore this event by default
 		// Return EventBypass to force reload process
 		return refresh.EventBypass
 	}
