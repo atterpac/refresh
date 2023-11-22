@@ -13,7 +13,7 @@ While refresh was built for reloading codebases it can be used to execute termin
 ## Install
 Installing via go CLI is the easiest method .tar.gz files per platform are available via github releases
 ```bash
-go install github.com/atterpac/refresh/cmd/refesh@latest
+go install github.com/atterpac/refresh/cmd/refresh@latest
 ```
 Alternative if you wish to use as a package and not a cli
 ```bash
