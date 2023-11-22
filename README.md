@@ -30,7 +30,7 @@ go get github.com/atterpac/refresh
 
 `-ae` Command to b be called when a modifcation is detected after the main process closes 
 
-`-l` Log Level to display options can include `"debug", "info","warn","error"`
+`-l` Log Level to display options can include `"debug", "info","warn","error", "mute"`
 
 `-f` path to a TOML config file see [Config File](https://github.com/atterpac/refresh#config-file) for details on the format of config
 
@@ -183,7 +183,7 @@ func ExampleCallback(e refresh.EventCallback) refresh.EventHandle {
 		return refresh.EventContinue
 	case refresh.Write:
 		// Ignore a file that would normally trigger a reload based on config
-		if e.Path == "./path/to/watched/file" {
+		if e.Path == "path/to/watched/file" {
 			return refresh.EventIgnore
 		}
 		// Continue with reload ruleset but add some extra logs/logic
