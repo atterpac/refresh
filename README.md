@@ -1,8 +1,7 @@
-# :construction: EARLY DEVELOPMENT :construction:
-This is a small tool I have built that is largely untested off of my machine. You are welcome to try it and if you notice any issues report them on the github and I will look into them.
-
 ## Refresh Hot Reload
 Refresh is CLI tool for hot reloading your codebase based on file system changes using [notify](https://github.com/rjeczalik/notify) with the ablity to use as a golang library in your own projects.
+
+While refresh was built for reloading codebases it can be used to execute terminal commands based on file system changes
 
 ## Key Features
 - Based on [Notify](https://github.com/rjeczalik/notify) to allievate common problems with popular FS libraries on mac that open a listener per file by using apples built-in FSEvents.
@@ -12,7 +11,7 @@ Refresh is CLI tool for hot reloading your codebase based on file system changes
 - MIT licensed
 
 ## Install
-Installing via go CLI is the easiest method more methods are on the list
+Installing via go CLI is the easiest method .tar.gz files per platform are available via github releases
 ```bash
 go install github.com/atterpac/refresh/cmd/refesh@latest
 ```
@@ -51,7 +50,7 @@ refresh -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -
 ## Embedding into your dev project
 There can be some uses where you might want to start a watcher internally or for a tool for development Hotato provides a function `NewEngineFromOptions` which takes an `refresh.Config` and allows for the `engine.Start()` function
 
-Using refresh as a library also opens the ability to add a Callback [Callback](https://github.com/atterpac/refresh#reload-callback) function that is called on every FS notification
+Using refresh as a library also opens the ability to add a [Callback](https://github.com/atterpac/refresh#reload-callback) function that is called on every FS notification
 
 ### Structs
 ```go
