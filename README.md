@@ -229,7 +229,7 @@ extension = [".db", ".sqlite"]
 ```
 
 ### Alternatives
-Hotato not for you? Here are some popular hot reload alternatives
+Refresh not for you? Here are some popular hot reload alternatives
 
 - [Air](https://github.com/cosmtrek/air)
 - [Realize](https://github.com/oxequa/realize)
