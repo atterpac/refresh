@@ -16,37 +16,20 @@ type Ignore struct {
 
 // Runs all ignore checks to decide if reload should happen
 func (i *Ignore) checkIgnore(path string) bool {
-	var dir, file, ext bool = false, false, false
 	basePath := filepath.Base(path)
-	if MapNotEmpty(i.Dir) {
-		dir = isPatternMatch(path, i.Dir)
-		if !dir {
-			dir = isIgnoreDir(path, i.Dir)
-		}
-		if dir {
+	if MapNotEmpty(i.Dir) && (isPatternMatch(path, i.Dir) || isIgnoreDir(path, i.Dir)) {
+			return true
+	}
+	if MapNotEmpty(i.File) && (isPatternMatch(basePath, i.File) || i.File[basePath]) {
 			return true
 		}
-	}
-	if MapNotEmpty(i.File) {
-		file = isPatternMatch(basePath, i.File)
-		if !file {
-			file = i.File[basePath]
-		}
-		if file {
+	if MapNotEmpty(i.Extension) && (isPatternMatch(path, i.Extension) || i.Extension[filepath.Ext(path)]) {
 			return true
-		}
 	}
-	if MapNotEmpty(i.Extension) {
-		ext = isPatternMatch(filepath.Ext(path), i.Extension)
-		if !ext {
-			ext = i.Extension[filepath.Ext(path)]
-		}
-		if ext {
-			return true
-		}
+	if isTmp(basePath) {
+		return true
 	}
-	slog.Debug(fmt.Sprintf("Ignore check: %v, %v, %v, %v", path, dir, file, ext))
-	return dir || file || ext || isTmp(basePath)
+	return false
 }
 
 func MapNotEmpty(m map[string]bool) bool {
