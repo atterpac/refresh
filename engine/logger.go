@@ -12,19 +12,14 @@ import (
 
 // SetDefault sets the default logger.
 func newLogger(level string) *slog.Logger {
-	var logger *slog.Logger
+	var writer io.Writer = os.Stderr
 	if level == "mute" {
-		logger = slog.New(tint.NewHandler(io.Discard, &tint.Options{
-			Level:      getLogLevel(level),
-			TimeFormat: time.Kitchen,
-		}))
-	} else {
-		logger = slog.New(tint.NewHandler(os.Stderr, &tint.Options{
-			Level:      getLogLevel(level),
-			TimeFormat: time.Kitchen,
-		}))
+		writer = io.Discard
 	}
-	return logger
+	return slog.New(tint.NewHandler(writer, &tint.Options{
+		Level:      getLogLevel(level),
+		TimeFormat: time.Kitchen,
+	}))
 }
 
 func printSubProcess(pipe io.ReadCloser) {
@@ -48,6 +43,5 @@ func getLogLevel(level string) slog.Level {
 		return slog.LevelError
 	default:
 		return slog.LevelInfo
-
 	}
 }

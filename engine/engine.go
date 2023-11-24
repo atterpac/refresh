@@ -12,7 +12,7 @@ import (
 
 type Engine struct {
 	Process        *process.Process
-	Chan 		 chan notify.EventInfo
+	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config"`
 	ProcessLogFile *os.File
@@ -27,6 +27,9 @@ func (engine *Engine) Start() {
 		engine.Config.ExternalSlog = true
 	}
 	slog.SetDefault(engine.Config.Slog)
+	if engine.Config.Ignore.IgnoreGit {
+		engine.Config.Ignore.Git = readGitIgnore(engine.Config.RootPath)
+	}
 	engine.watch()
 }
 

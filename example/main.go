@@ -6,9 +6,10 @@ import (
 
 func main() {
 	ignore := refresh.Ignore{
-		File:      map[string]bool{"!*.go": true},
+		File:      map[string]bool{"ignore.go": true},
 		Dir:       map[string]bool{"*/ignore*": true},
 		Extension: map[string]bool{".db": true},
+		IgnoreGit: true,
 	}
 	config := refresh.Config{
 		RootPath:    "./test",

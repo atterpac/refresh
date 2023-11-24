@@ -6,7 +6,7 @@ import (
 	"github.com/rjeczalik/notify"
 )
 
-var eventMap = map[notify.Event]EventInfo{
+var eventMap = map[notify.Event]eventInfo{
 	notify.FileNotifyChangeLastWrite:  {Name: "FileNotifyChangeLastWrite", Reload: true},
 	notify.FileActionModified:         {Name: "FileActionModified", Reload: true},
 	notify.FileActionRenamedNewName:   {Name: "FileActionRenamedNewName", Reload: false},

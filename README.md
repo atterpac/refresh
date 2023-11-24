@@ -26,6 +26,8 @@ go get github.com/atterpac/refresh
 
 `-be` Command to be called before the exec command for example `go mod tidy`
 
+`-w` Flag to decide wether the exec process should wait on the pre exec to complete
+
 `-e` Command to be called when a modification is detected for example `go run main.go`
 
 `-ae` Command to b be called when a modifcation is detected after the main process closes 
@@ -57,6 +59,7 @@ Using refresh as a library also opens the ability to add a [Callback](https://gi
 type Config struct {
 	RootPath     string `toml:"root_path"`
 	PreExec      string `toml:"pre_exec"`
+    PreWait      bool   `toml:"pre_wait"`
 	ExecCommand  string `toml:"exec_command"`
 	PostExec     string `toml:"post_exec"`
 	Ignore       Ignore `toml:"ignore"`
@@ -67,10 +70,11 @@ type Config struct {
 }
 
 type Ignore struct {
-    Pattern   map[string]bool `toml:"pattern"`
 	Dir       map[string]bool `toml:"dir"`
 	File      map[string]bool `toml:"file"`
 	Extension map[string]bool `toml:"extension"`
+    GitIgnore bool            `toml:"git_ignore"`
+    Git       map[string]bool // Genrated on start
 }
 ```
 
@@ -88,6 +92,7 @@ func main () {
 		File:      map[string]bool{"ignore*.go":true, ".gitignore"},
 		Dir:       map[string]bool{".git":true,"*/node_modules":true},
 		Extension: map[string]bool{"!*.go":true},
+        IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
 	config := refresh.Config{
 		RootPath:    "./subExecProcess",
@@ -213,6 +218,7 @@ refresh.NewEngineFromTOML("path/to/toml")
 root_path = "./"
 # Runs prior to the exec command starting
 pre_exec = "go mod tidy"
+pre_wait = true
 # Command to run on reload
 exec_command = "go run main.go"
 # Runs when a file reload is triggered after killing the previous process

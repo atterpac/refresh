@@ -1,55 +1,44 @@
 package engine
 
 import (
+	"bufio"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 )
 
 type Ignore struct {
-	Pattern   map[string]bool `toml:"pattern"`
 	Dir       map[string]bool `toml:"dir"`
 	File      map[string]bool `toml:"file"`
 	Extension map[string]bool `toml:"extension"`
+	IgnoreGit bool            `toml:"git"`
+	Git       map[string]bool
 }
 
 // Runs all ignore checks to decide if reload should happen
 func (i *Ignore) checkIgnore(path string) bool {
-	var dir, file, ext bool = false, false, false
 	basePath := filepath.Base(path)
-	if MapNotEmpty(i.Dir) {
-		dir = isPatternMatch(path, i.Dir)
-		if !dir {
-			dir = isIgnoreDir(path, i.Dir)
-		}
-		if dir {
-			return true
-		}
+	if isTmp(basePath) {
+		return true
 	}
-	if MapNotEmpty(i.File) {
-		file = isPatternMatch(basePath, i.File)
-		if !file {
-			file = i.File[basePath]
-		}
-		if file {
-			return true
-		}
+	if mapHasItems(i.Dir) && (patternMatch(path, i.Dir) || isIgnoreDir(path, i.Dir)) {
+		return true
 	}
-	if MapNotEmpty(i.Extension) {
-		ext = isPatternMatch(filepath.Ext(path), i.Extension)
-		if !ext {
-			ext = i.Extension[filepath.Ext(path)]
-		}
-		if ext {
-			return true
-		}
+	if mapHasItems(i.File) && (patternMatch(basePath, i.File) || i.File[basePath]) {
+		return true
 	}
-	slog.Debug(fmt.Sprintf("Ignore check: %v, %v, %v, %v", path, dir, file, ext))
-	return dir || file || ext || isTmp(basePath)
+	if mapHasItems(i.Extension) && (patternMatch(path, i.Extension) || i.Extension[filepath.Ext(path)]) {
+		return true
+	}
+	if i.IgnoreGit && patternMatch(path, i.Git) {
+		return true
+	}
+	return false
 }
 
-func MapNotEmpty(m map[string]bool) bool {
+func mapHasItems(m map[string]bool) bool {
 	return len(m) >= 0
 }
 
@@ -70,11 +59,7 @@ func isIgnoreDir(path string, Dirmap map[string]bool) bool {
 	return false
 }
 
-func isPattern(path string) bool {
-	return strings.Contains(path, "*") || strings.Contains(path, "!")
-}
-
-func isPatternMatch(path string, PatternMap map[string]bool) bool {
+func patternMatch(path string, PatternMap map[string]bool) bool {
 	for pattern := range PatternMap {
 		if patternCompare(path, pattern) {
 			slog.Debug(fmt.Sprintf("Matched: %s with %s", path, pattern))
@@ -85,11 +70,10 @@ func isPatternMatch(path string, PatternMap map[string]bool) bool {
 }
 
 func patternCompare(path, pattern string) bool {
-	parts := strings.Split(pattern, "*")
 	if pattern[0:1] == `!` {
 		return !patternCompare(path, pattern[1:])
 	}
-
+	parts := strings.Split(pattern, "*")
 	// Match the first part before the wildcard
 	i := 0
 	for _, part := range parts[0] {
@@ -100,7 +84,6 @@ func patternCompare(path, pattern string) bool {
 		}
 		i += index + 1
 	}
-
 	// Match the second part after the wildcard
 	j := len(parts[1]) - 1
 	for _, part := range parts[1] {
@@ -116,7 +99,6 @@ func patternCompare(path, pattern string) bool {
 		}
 		j--
 	}
-
 	return j < 0
 }
 
@@ -139,10 +121,7 @@ func (i *Ignore) UnmarshalTOML(data interface{}) error {
 			for _, str := range strArray {
 				stringMap[str.(string)] = true
 			}
-
 			switch key {
-			case "pattern":
-				i.Pattern = stringMap
 			case "dir":
 				i.Dir = stringMap
 			case "file":
@@ -152,5 +131,42 @@ func (i *Ignore) UnmarshalTOML(data interface{}) error {
 			}
 		}
 	}
+
 	return nil
+}
+
+func readGitIgnore(path string) map[string]bool {
+	file, err := os.Open(path + "/.gitignore")
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+	slog.Debug("Reading .gitignore")
+
+	scanner := bufio.NewScanner(file)
+	var linesMap = make(map[string]bool)
+	for scanner.Scan() {
+		// Check if line is a comment
+		if strings.HasPrefix(scanner.Text(), "#") {
+			continue
+		}
+
+		// Check if line is empty
+		if len(scanner.Text()) == 0 {
+			continue
+		}
+
+		line := scanner.Text()
+
+		// Check if line does not start with '*'
+		if !strings.HasPrefix(line, "*") {
+			// Add asterisk to the beginning of line
+			line = "*" + line
+		}
+
+		// Add to the map
+		linesMap[line] = true
+	}
+	slog.Debug(fmt.Sprintf("Read %v lines from .gitignore", linesMap))
+	return linesMap
 }
