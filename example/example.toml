@@ -6,6 +6,7 @@ label = "My Project"
 # Relative to this files location
 root_path = "./test"
 # Runs prior to the exec command starting
+pre_wait = true
 pre_exec = ""
 # Command to run on reload
 exec_command = "go run main.go"

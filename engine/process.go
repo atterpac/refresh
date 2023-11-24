@@ -21,7 +21,7 @@ func (engine *Engine) reloadProcess() *process.Process {
 			return nil
 		}
 		// Post Exec
-		err := runFromString(engine.Config.PostExec)
+		err := runFromString(engine.Config.PostExec, false)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Error running post-exec command: %s", err.Error()))
 			os.Exit(1)
@@ -33,7 +33,7 @@ func (engine *Engine) reloadProcess() *process.Process {
 		}
 	}
 	// Pre-Process Exec
-	err := runFromString(engine.Config.PreExec)
+	err := runFromString(engine.Config.PreExec, engine.Config.PreWait)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error running pre-exec command: %s", err.Error()))
 		os.Exit(1)
@@ -101,7 +101,7 @@ func killProcess(process *process.Process) bool {
 }
 
 // Takes a string and runs it as a command by sliceing the string on spaces and passing it to exec
-func runFromString(cmdString string) error {
+func runFromString(cmdString string, wait bool) error {
 	if cmdString == "" {
 		return nil
 	}
@@ -112,6 +112,13 @@ func runFromString(cmdString string) error {
 	err := cmd.Run()
 	if err != nil {
 		return err
+	}
+	// If string ends in ~ wait for cmd to finish
+	if wait {
+		err = cmd.Wait()
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

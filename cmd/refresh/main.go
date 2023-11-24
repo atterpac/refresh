@@ -11,10 +11,11 @@ import (
 )
 
 func main() {
-	var version string = "0.1.1"
+	var version string = "0.2.0"
 
 	var rootPath string
 	var preExec string
+	var preWait bool
 	var execCommand string
 	var postExec string
 	var logLevel string
@@ -31,6 +32,7 @@ func main() {
 	flag.StringVar(&rootPath, "p", "./", "Root path to watch")
 	flag.StringVar(&execCommand, "e", "", "Command to execute on changes")
 	flag.StringVar(&preExec, "be", "", "Command to execute before the exec command is ran")
+	flag.BoolVar(&preWait, "w", false, "Boolean to decide if the exec should wait for the pre-exec to finish")
 	flag.StringVar(&postExec, "ae", "", "Command to execute when a reload is dectected after the orginal exec completes")
 	flag.StringVar(&logLevel, "l", "info", "Level to set Logs")
 	flag.StringVar(&configPath, "f", "", "File to read config from")
@@ -63,6 +65,7 @@ func main() {
 		// Debounce string to int
 		config := refresh.Config{
 			RootPath:    rootPath,
+			PreWait:	 preWait, 
 			PreExec:     preExec,
 			PostExec:    postExec,
 			ExecCommand: execCommand,

@@ -10,6 +10,7 @@ import (
 type Config struct {
 	RootPath    string `toml:"root_path"`
 	PreExec     string `toml:"pre_exec"`
+	PreWait    bool   `toml:"pre_wait"`
 	ExecCommand string `toml:"exec_command"`
 	PostExec    string `toml:"post_exec"`
 	// Ignore uses a custom unmarshaler see ignore.go

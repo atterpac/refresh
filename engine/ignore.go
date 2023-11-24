@@ -1,17 +1,20 @@
 package engine
 
 import (
+	"bufio"
 	"fmt"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 )
 
 type Ignore struct {
-	Pattern   map[string]bool `toml:"pattern"`
 	Dir       map[string]bool `toml:"dir"`
 	File      map[string]bool `toml:"file"`
 	Extension map[string]bool `toml:"extension"`
+	IgnoreGit bool            `toml:"git"`
+	Git       map[string]bool
 }
 
 // Runs all ignore checks to decide if reload should happen
@@ -27,6 +30,9 @@ func (i *Ignore) checkIgnore(path string) bool {
 		return true
 	}
 	if mapHasItems(i.Extension) && (patternMatch(path, i.Extension) || i.Extension[filepath.Ext(path)]) {
+		return true
+	}
+	if i.IgnoreGit && patternMatch(path, i.Git) {
 		return true
 	}
 	return false
@@ -93,7 +99,6 @@ func patternCompare(path, pattern string) bool {
 		}
 		j--
 	}
-
 	return j < 0
 }
 
@@ -116,10 +121,7 @@ func (i *Ignore) UnmarshalTOML(data interface{}) error {
 			for _, str := range strArray {
 				stringMap[str.(string)] = true
 			}
-
 			switch key {
-			case "pattern":
-				i.Pattern = stringMap
 			case "dir":
 				i.Dir = stringMap
 			case "file":
@@ -129,5 +131,42 @@ func (i *Ignore) UnmarshalTOML(data interface{}) error {
 			}
 		}
 	}
+
 	return nil
+}
+
+func readGitIgnore(path string) map[string]bool {
+	file, err := os.Open(path + "/.gitignore")
+	if err != nil {
+		return nil
+	}
+	defer file.Close()
+	slog.Debug("Reading .gitignore")
+
+	scanner := bufio.NewScanner(file)
+	var linesMap = make(map[string]bool)
+	for scanner.Scan() {
+		// Check if line is a comment
+		if strings.HasPrefix(scanner.Text(), "#") {
+			continue
+		}
+
+		// Check if line is empty
+		if len(scanner.Text()) == 0 {
+			continue
+		}
+
+		line := scanner.Text()
+
+		// Check if line does not start with '*'
+		if !strings.HasPrefix(line, "*") {
+			// Add asterisk to the beginning of line
+			line = "*" + line
+		}
+
+		// Add to the map
+		linesMap[line] = true
+	}
+	slog.Debug(fmt.Sprintf("Read %v lines from .gitignore", linesMap))
+	return linesMap
 }

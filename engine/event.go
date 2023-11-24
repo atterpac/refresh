@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type EventInfo struct {
+type eventInfo struct {
 	Name   string
 	Reload bool
 }
