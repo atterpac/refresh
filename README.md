@@ -236,6 +236,8 @@ dir = [".git", "node_modules", "newdir"]
 file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
 # File extensions to ignore
 extension = [".db", ".sqlite"]
+# Add .gitignore paths to ignore
+git_ignore = true
 ```
 
 ### Alternatives

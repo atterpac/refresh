@@ -23,6 +23,7 @@ func main() {
 	var debounce string
 	var watch *refresh.Engine
 	var versFlag bool
+	var gitIgnore bool
 
 	// Ignore
 	var ignoreDir string
@@ -41,6 +42,7 @@ func main() {
 	flag.StringVar(&ignoreExt, "ie", "", "Ignore Extension list as comma-separated list")
 	flag.StringVar(&debounce, "d", "1000", "Debounce time in milliseconds")
 	flag.BoolVar(&versFlag, "v", false, "Print version")
+	flag.BoolVar(&gitIgnore, "git", false, "Read from .gitignore")
 	flag.Parse()
 
 	if versFlag {
@@ -56,6 +58,7 @@ func main() {
 			File:      stringSliceToMap(strings.Split(ignoreFile, ",")),
 			Dir:       stringSliceToMap(strings.Split(ignoreDir, ",")),
 			Extension: stringSliceToMap(strings.Split(ignoreExt, ",")),
+			IgnoreGit: gitIgnore,
 		}
 		debounceThreshold, err := strconv.Atoi(debounce)
 		if err != nil {
