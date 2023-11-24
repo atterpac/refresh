@@ -73,6 +73,8 @@ type Ignore struct {
 	Dir       map[string]bool `toml:"dir"`
 	File      map[string]bool `toml:"file"`
 	Extension map[string]bool `toml:"extension"`
+    GitIgnore bool            `toml:"git_ignore"`
+    Git       map[string]bool // Genrated on start
 }
 ```
 
@@ -90,6 +92,7 @@ func main () {
 		File:      map[string]bool{"ignore*.go":true, ".gitignore"},
 		Dir:       map[string]bool{".git":true,"*/node_modules":true},
 		Extension: map[string]bool{"!*.go":true},
+        IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
 	config := refresh.Config{
 		RootPath:    "./subExecProcess",
