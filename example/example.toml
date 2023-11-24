@@ -18,10 +18,11 @@ log_level = "info"
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
 [config.ignore]
+pattern = ["*/ignore*"]
 # Directories to ignore
 dir = ["ignoreme"]
 # Files to ignore
 file = ["ignore.go"]
 # File extensions to ignore
-extension = [".txt"]
+extension = [".db"]
 

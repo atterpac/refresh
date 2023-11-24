@@ -67,6 +67,7 @@ type Config struct {
 }
 
 type Ignore struct {
+    Pattern   map[string]bool `toml:"pattern"`
 	Dir       map[string]bool `toml:"dir"`
 	File      map[string]bool `toml:"file"`
 	Extension map[string]bool `toml:"extension"`
@@ -82,9 +83,11 @@ import ( // other imports
 
 func main () {
 	ignore := refresh.Ignore{
-		File:      map[string]bool{"ignore.go":true, ".gitignore"},
-		Dir:       map[string]bool{".git":true,"node_modules":true},
-		Extension: map[string]bool{".txt":true, ".db":true},
+        // Can use * wildcards per usual 
+        // ! denoted an invert in this example ignoring any extensions that are not *.go
+		File:      map[string]bool{"ignore*.go":true, ".gitignore"},
+		Dir:       map[string]bool{".git":true,"*/node_modules":true},
+		Extension: map[string]bool{"!*.go":true},
 	}
 	config := refresh.Config{
 		RootPath:    "./subExecProcess",
