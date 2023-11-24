@@ -17,22 +17,22 @@ type Ignore struct {
 // Runs all ignore checks to decide if reload should happen
 func (i *Ignore) checkIgnore(path string) bool {
 	basePath := filepath.Base(path)
-	if MapNotEmpty(i.Dir) && (isPatternMatch(path, i.Dir) || isIgnoreDir(path, i.Dir)) {
-			return true
-	}
-	if MapNotEmpty(i.File) && (isPatternMatch(basePath, i.File) || i.File[basePath]) {
-			return true
-		}
-	if MapNotEmpty(i.Extension) && (isPatternMatch(path, i.Extension) || i.Extension[filepath.Ext(path)]) {
-			return true
-	}
 	if isTmp(basePath) {
+		return true
+	}
+	if mapHasItems(i.Dir) && (patternMatch(path, i.Dir) || isIgnoreDir(path, i.Dir)) {
+		return true
+	}
+	if mapHasItems(i.File) && (patternMatch(basePath, i.File) || i.File[basePath]) {
+		return true
+	}
+	if mapHasItems(i.Extension) && (patternMatch(path, i.Extension) || i.Extension[filepath.Ext(path)]) {
 		return true
 	}
 	return false
 }
 
-func MapNotEmpty(m map[string]bool) bool {
+func mapHasItems(m map[string]bool) bool {
 	return len(m) >= 0
 }
 
@@ -53,11 +53,7 @@ func isIgnoreDir(path string, Dirmap map[string]bool) bool {
 	return false
 }
 
-func isPattern(path string) bool {
-	return strings.Contains(path, "*") || strings.Contains(path, "!")
-}
-
-func isPatternMatch(path string, PatternMap map[string]bool) bool {
+func patternMatch(path string, PatternMap map[string]bool) bool {
 	for pattern := range PatternMap {
 		if patternCompare(path, pattern) {
 			slog.Debug(fmt.Sprintf("Matched: %s with %s", path, pattern))
@@ -68,11 +64,10 @@ func isPatternMatch(path string, PatternMap map[string]bool) bool {
 }
 
 func patternCompare(path, pattern string) bool {
-	parts := strings.Split(pattern, "*")
 	if pattern[0:1] == `!` {
 		return !patternCompare(path, pattern[1:])
 	}
-
+	parts := strings.Split(pattern, "*")
 	// Match the first part before the wildcard
 	i := 0
 	for _, part := range parts[0] {
@@ -83,7 +78,6 @@ func patternCompare(path, pattern string) bool {
 		}
 		i += index + 1
 	}
-
 	// Match the second part after the wildcard
 	j := len(parts[1]) - 1
 	for _, part := range parts[1] {
