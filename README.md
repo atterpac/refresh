@@ -66,7 +66,6 @@ type Config struct {
 	LogLevel     string `toml:"log_level"`
 	Debounce     int    `toml:"debounce"`
 	Slog         *slog.Logger
-	ExternalSlog bool
 }
 
 type Ignore struct {
@@ -74,7 +73,6 @@ type Ignore struct {
 	File      map[string]bool `toml:"file"`
 	Extension map[string]bool `toml:"extension"`
     GitIgnore bool            `toml:"git_ignore"`
-    Git       map[string]bool // Genrated on start
 }
 ```
 
@@ -86,12 +84,13 @@ import ( // other imports
     )
 
 func main () {
+    var zeroByte struct{}
 	ignore := refresh.Ignore{
         // Can use * wildcards per usual 
         // ! denoted an invert in this example ignoring any extensions that are not *.go
-		File:      map[string]bool{"ignore*.go":true, ".gitignore"},
-		Dir:       map[string]bool{".git":true,"*/node_modules":true},
-		Extension: map[string]bool{"!*.go":true},
+		File:      map[string]bool{"ignore*.go": zeroByte, ".gitignore": zeroByte},
+		Dir:       map[string]bool{".git":zeroByte,"*/node_modules":zeroByte},
+		Extension: map[string]bool{"!*.go":zeroByte},
         IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
 	config := refresh.Config{
@@ -101,11 +100,10 @@ func main () {
 		Ignore:      ignore,
 		Debounce:    1000,
 		Slog: nil, // Optionally provide a slog interface
-                  // if nil a default will be provided
-                  // If provided stdout will not be piped through refresh
-
+                   // if nil a default will be provided
+                   // If provided stdout will not be piped through refresh
 		// Optionally provide a callback function to be called upon file notification events
-        	Callback: func(*EventCallback) EventHandle 
+        Callback: func(*EventCallback) EventHandle 
 	}
 	engine := refresh.NewEngineFromConfig(config)
 	engine.Start()
