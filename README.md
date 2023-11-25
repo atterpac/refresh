@@ -72,7 +72,7 @@ type Ignore struct {
 	Dir       []string `toml:"dir"`
 	File      []string `toml:"file"`
 	Extension []string `toml:"extension"`
-    GitIgnore bool            `toml:"git_ignore"`
+    GitIgnore bool     `toml:"git_ignore"`
 }
 ```
 
