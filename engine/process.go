@@ -17,13 +17,13 @@ func (engine *Engine) reloadProcess() *process.Process {
 	if engine.isRunning() {
 		ok := killProcess(engine.Process)
 		if !ok {
-			slog.Error("Error releasing process: %s")
+			slog.Error("Releasing process: %s")
 			return nil
 		}
 		// Post Exec
 		err := runFromString(engine.Config.PostExec, false)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error running post-exec command: %s", err.Error()))
+			slog.Error(fmt.Sprintf("Running post-exec command: %s", err.Error()))
 			os.Exit(1)
 		}
 		if engine.ProcessLogPipe != nil {
@@ -35,13 +35,13 @@ func (engine *Engine) reloadProcess() *process.Process {
 	// Pre-Process Exec
 	err := runFromString(engine.Config.PreExec, engine.Config.PreWait)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error running pre-exec command: %s", err.Error()))
+		slog.Error(fmt.Sprintf("Running pre-exec command: %s", err.Error()))
 		os.Exit(1)
 	}
 	// Start Exec Process
 	process, err := engine.startProcess()
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error starting process: %s", err.Error()))
+		slog.Error(fmt.Sprintf("Starting process: %s", err.Error()))
 		os.Exit(1)
 	}
 
@@ -54,15 +54,15 @@ func (engine *Engine) startProcess() (*process.Process, error) {
 	command := generateExec(engine.Config.ExecCommand)
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Dir = engine.Config.RootPath
-
 	// If an external slog is provided do not pipe stdout to the engine
-	if !engine.Config.ExternalSlog {
+	if !engine.Config.externalSlog {
 		cmd.Stderr = os.Stderr
 		engine.ProcessLogPipe, err = cmd.StdoutPipe()
 		if err != nil {
-			fmt.Println("Error getting stdout pipe", err.Error())
+			slog.Error(fmt.Sprintf("Getting stdout pipe: %s", err.Error()))
 			return nil, err
 		}
+		slog.Debug("Starting log pipe")
 		go printSubProcess(engine.ProcessLogPipe)
 	}
 
@@ -73,7 +73,7 @@ func (engine *Engine) startProcess() (*process.Process, error) {
 	}
 	process, err := process.NewProcess(int32(cmd.Process.Pid))
 	if err != nil {
-		fmt.Println("Error getting process", err.Error())
+		slog.Error(fmt.Sprintf("Getting new process: %s", err.Error()))
 		return nil, err
 	}
 	return process, nil
@@ -86,7 +86,7 @@ func killProcess(process *process.Process) bool {
 	if runtime.GOOS == "windows" {
 		err := killWindows(int(process.Pid))
 		if err != nil {
-			fmt.Println("Error killing process", err.Error())
+			slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
 			return false
 		}
 		return true
@@ -94,7 +94,7 @@ func killProcess(process *process.Process) bool {
 	// Kill process on other OS's
 	err := process.Kill()
 	if err != nil {
-		fmt.Println("Error killing process", err.Error())
+		slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
 		return false
 	}
 	return true
@@ -109,11 +109,10 @@ func runFromString(cmdString string, wait bool) error {
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Run()
+	err := cmd.Start()
 	if err != nil {
 		return err
 	}
-	// If string ends in ~ wait for cmd to finish
 	if wait {
 		err = cmd.Wait()
 		if err != nil {
