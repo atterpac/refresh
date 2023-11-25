@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	var version string = "0.2.0"
+	var version string = "0.2.2"
 
 	var rootPath string
 	var preExec string
@@ -83,10 +83,10 @@ func main() {
 	<-make(chan struct{})
 }
 
-func stringSliceToMap(slice []string) map[string]bool {
-	m := make(map[string]bool)
+func stringSliceToMap(slice []string) map[string]struct{} {
+	m := make(map[string]struct{})
 	for _, v := range slice {
-		m[v] = true
+		m[v] = struct{}{}
 	}
 	return m
 }
