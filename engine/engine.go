@@ -28,7 +28,7 @@ func (engine *Engine) Start() {
 	}
 	slog.SetDefault(engine.Config.Slog)
 	if engine.Config.Ignore.IgnoreGit {
-		engine.Config.Ignore.git = readGitIgnore(engine.Config.RootPath)
+		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
 	engine.watch()
 }
@@ -58,6 +58,7 @@ func NewEngine(rootPath, execCommand, logLevel string, ignore Ignore, debounce i
 func NewEngineFromConfig(options Config) *Engine {
 	engine := &Engine{}
 	engine.Config = options
+	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	engine.verifyConfig()
 	return engine
 }
@@ -68,3 +69,6 @@ func NewEngineFromTOML(confPath string) *Engine {
 	engine.verifyConfig()
 	return &engine
 }
+
+
+

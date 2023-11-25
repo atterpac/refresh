@@ -54,7 +54,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 		}
 		if eventInfo.Reload {
 			// Check if file should be ignored
-			if engine.Config.Ignore.checkIgnore(ei.Path()) {
+			if engine.Config.ignoreMap.checkIgnore(ei.Path()) {
 				slog.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String(), ei.Path()))
 				continue
 			}

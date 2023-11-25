@@ -11,29 +11,38 @@ import (
 )
 
 type Ignore struct {
-	Dir       map[string]struct{} `toml:"dir"`
-	File      map[string]struct{} `toml:"file"`
-	Extension map[string]struct{} `toml:"extension"`
-	IgnoreGit bool                `toml:"git"`
+	Dir       []string `toml:"dir"`
+	File      []string `toml:"file"`
+	Extension []string `toml:"extension"`
+	IgnoreGit bool     `toml:"git"`
+}
+
+type ignoreMap struct {
+	dir       map[string]struct{}
+	file      map[string]struct{}
+	extension map[string]struct{}
 	git       map[string]struct{}
 }
 
 // Runs all ignore checks to decide if reload should happen
-func (i *Ignore) checkIgnore(path string) bool {
+func (i *ignoreMap) checkIgnore(path string) bool {
 	basePath := filepath.Base(path)
 	if isTmp(basePath) {
 		return true
 	}
-	if mapHasItems(i.Dir) && (patternMatch(path, i.Dir) || isIgnoreDir(path, i.Dir)) {
+	if mapHasItems(i.dir) && (patternMatch(path, i.dir) || isIgnoreDir(path, i.dir)) {
 		return true
 	}
-	if mapHasItems(i.File) && patternMatch(basePath, i.File) {
+	_, ok := i.file[basePath]
+	if mapHasItems(i.file) && patternMatch(basePath, i.file) || ok {
 		return true
 	}
-	if mapHasItems(i.Extension) && patternMatch(path, i.Extension) {
+	// Check if file extension is in ignore list
+	_, ok = i.extension[filepath.Ext(path)]
+	if mapHasItems(i.extension) && patternMatch(path, i.extension) || ok {
 		return true
 	}
-	if i.IgnoreGit && mapHasItems(i.git) && patternMatch(path, i.git) {
+	if mapHasItems(i.git) && patternMatch(path, i.git) {
 		return true
 	}
 	return false
@@ -72,36 +81,49 @@ func patternMatch(path string, PatternMap map[string]struct{}) bool {
 }
 
 // Custom Unmarshal to stuff data into maps
-func (i *Ignore) UnmarshalTOML(data interface{}) error {
+func (i *ignoreMap) UnmarshalTOML(data interface{}) error {
 	m, ok := data.(map[string]interface{})
 	if !ok {
 		return fmt.Errorf("expected a map")
 	}
-
 	for key, value := range m {
 		switch key {
 		case "dir", "file", "extension":
-			strArray, ok := value.([]interface{})
+			strArray, ok := value.([]string)
 			if !ok {
 				return fmt.Errorf("%s should be an array", key)
 			}
-
 			stringMap := make(map[string]struct{})
 			for _, str := range strArray {
-				stringMap[str.(string)] = struct{}{}
+				stringMap[str] = struct{}{}
 			}
 			switch key {
 			case "dir":
-				i.Dir = stringMap
+				i.dir = stringMap
 			case "file":
-				i.File = stringMap
+				i.file = stringMap
 			case "extension":
-				i.Extension = stringMap
+				i.extension = stringMap
 			}
 		}
 	}
-
 	return nil
+}
+
+func convertToIgnoreMap(ignore Ignore) ignoreMap {
+	return ignoreMap{
+		file:      convertToMap(ignore.File),
+		dir:       convertToMap(ignore.Dir),
+		extension: convertToMap(ignore.Extension),
+	}
+}
+
+func convertToMap(slice []string) map[string]struct{} {
+	m := make(map[string]struct{})
+	for _, v := range slice {
+		m[v] = struct{}{}
+	}
+	return m
 }
 
 func readGitIgnore(path string) map[string]struct{} {
