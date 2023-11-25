@@ -55,9 +55,9 @@ func main() {
 		watch = refresh.NewEngineFromTOML(configPath)
 	} else {
 		ignore := refresh.Ignore{
-			File:      stringSliceToMap(strings.Split(ignoreFile, ",")),
-			Dir:       stringSliceToMap(strings.Split(ignoreDir, ",")),
-			Extension: stringSliceToMap(strings.Split(ignoreExt, ",")),
+			File:      strings.Split(ignoreFile, ","),
+			Dir:       strings.Split(ignoreDir, ","),
+			Extension: strings.Split(ignoreExt, ","),
 			IgnoreGit: gitIgnore,
 		}
 		debounceThreshold, err := strconv.Atoi(debounce)
@@ -81,14 +81,6 @@ func main() {
 
 	watch.Start()
 	<-make(chan struct{})
-}
-
-func stringSliceToMap(slice []string) map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, v := range slice {
-		m[v] = struct{}{}
-	}
-	return m
 }
 
 func PrintBanner(ver string) string{
