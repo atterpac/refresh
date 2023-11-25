@@ -69,9 +69,9 @@ type Config struct {
 }
 
 type Ignore struct {
-	Dir       map[string]bool `toml:"dir"`
-	File      map[string]bool `toml:"file"`
-	Extension map[string]bool `toml:"extension"`
+	Dir       []string `toml:"dir"`
+	File      []string `toml:"file"`
+	Extension []string `toml:"extension"`
     GitIgnore bool            `toml:"git_ignore"`
 }
 ```
