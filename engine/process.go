@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
+	"syscall"
 
 	"github.com/shirou/gopsutil/process"
 )
@@ -21,7 +22,7 @@ func (engine *Engine) reloadProcess() *process.Process {
 			return nil
 		}
 		// Post Exec
-		err := runFromString(engine.Config.PostExec, false)
+		err := runFromString(engine.Config.PostExec, false, engine.Config.RootPath)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Running post-exec command: %s", err.Error()))
 			os.Exit(1)
@@ -33,7 +34,7 @@ func (engine *Engine) reloadProcess() *process.Process {
 		}
 	}
 	// Pre-Process Exec
-	err := runFromString(engine.Config.PreExec, engine.Config.PreWait)
+	err := runFromString(engine.Config.PreExec, engine.Config.PreWait, engine.Config.RootPath)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Running pre-exec command: %s", err.Error()))
 		os.Exit(1)
@@ -101,23 +102,40 @@ func killProcess(process *process.Process) bool {
 }
 
 // Takes a string and runs it as a command by sliceing the string on spaces and passing it to exec
-func runFromString(cmdString string, wait bool) error {
+func runFromString(cmdString string, wait bool, root string) error {
 	if cmdString == "" {
 		return nil
+	}
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+	// change exec directory
+	// remove ./ from root path
+	root = strings.TrimPrefix(root, "./")
+	err = os.Chdir(workingDir + "/" + root)
+	if err != nil {
+		return err
 	}
 	commandSlice := generateExec(cmdString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Start()
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	err = cmd.Start()
 	if err != nil {
 		return err
 	}
+	// reset exec directory
 	if wait {
-		err = cmd.Wait()
+		_, err = syscall.Wait4(-cmd.Process.Pid, nil, 0, nil)
 		if err != nil {
 			return err
 		}
+	}
+	err = os.Chdir(workingDir)
+	if err != nil {
+		return err
 	}
 	return nil
 }
