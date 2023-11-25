@@ -5,10 +5,11 @@ import (
 )
 
 func main() {
+	var empty struct{}
 	ignore := refresh.Ignore{
-		File:      map[string]bool{"ignore.go": true},
-		Dir:       map[string]bool{"*/ignore*": true},
-		Extension: map[string]bool{".db": true},
+		File:      map[string]struct{}{"ignore.go": empty},
+		Dir:       map[string]struct{}{"*/ignore*": empty},
+		Extension: map[string]struct{}{".db": empty},
 		IgnoreGit: true,
 	}
 	config := refresh.Config{
@@ -38,7 +39,7 @@ func RefreshCallback(e *refresh.EventCallback) refresh.EventHandle {
 		return refresh.EventContinue
 	case refresh.Remove:
 		return refresh.EventContinue
-		// Other Hotato Event Types...
+		// Other cases as needed ...
 	}
 	return refresh.EventContinue
 }

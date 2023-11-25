@@ -7,9 +7,9 @@ label = "My Project"
 root_path = "./test"
 # Runs prior to the exec command starting
 pre_wait = true
-pre_exec = ""
+pre_exec = "go build -o main main.go"
 # Command to run on reload
-exec_command = "go run main.go"
+exec_command = "go run ./main"
 # Runs when a file reload is triggered after killing the previous process
 post_exec = ""
 # debug | info | warn | error | mute
