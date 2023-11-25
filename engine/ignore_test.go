@@ -11,7 +11,6 @@ import (
 var testIgnoreData string
 
 func Test_patternCompare(t *testing.T) {
-
 	// Process the ignore data by reading each line, trimming whitespace, ignore line if first char is #, split into fields
 	// and test the values
 	scanner := bufio.NewScanner(strings.NewReader(testIgnoreData))
