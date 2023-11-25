@@ -14,7 +14,7 @@ type Ignore struct {
 	Dir       map[string]struct{} `toml:"dir"`
 	File      map[string]struct{} `toml:"file"`
 	Extension map[string]struct{} `toml:"extension"`
-	IgnoreGit bool            `toml:"git"`
+	IgnoreGit bool                `toml:"git"`
 	git       map[string]struct{}
 }
 
