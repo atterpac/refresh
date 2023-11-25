@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	var version string = "0.2.2"
+	var version string = "0.2.3"
 
 	var rootPath string
 	var preExec string
