@@ -1,0 +1,2 @@
+# "Pattern" <space> "Text" <space> Should match
+"test.txt" "test.txt" true
