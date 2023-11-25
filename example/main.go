@@ -5,11 +5,10 @@ import (
 )
 
 func main() {
-	var empty struct{}
 	ignore := refresh.Ignore{
-		File:      map[string]struct{}{"ignore.go": empty},
-		Dir:       map[string]struct{}{"*/ignore*": empty},
-		Extension: map[string]struct{}{".db": empty},
+		File:      []string{"ignore.go", "*ignore.go"},
+		Dir:       []string{"*/ignore*"},
+		Extension: []string{".db", ".txt"},
 		IgnoreGit: true,
 	}
 	config := refresh.Config{
