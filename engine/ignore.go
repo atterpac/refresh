@@ -30,15 +30,18 @@ func (i *ignoreMap) checkIgnore(path string) bool {
 	if isTmp(basePath) {
 		return true
 	}
+	slog.Debug(fmt.Sprintf("Checking if %s is in %v", path, i.dir))
 	if mapHasItems(i.dir) && (patternMatch(path, i.dir) || isIgnoreDir(path, i.dir)) {
 		return true
 	}
 	_, ok := i.file[basePath]
+	slog.Debug(fmt.Sprintf("Checking if %s is in %v", basePath, i.file))
 	if mapHasItems(i.file) && patternMatch(basePath, i.file) || ok {
 		return true
 	}
 	// Check if file extension is in ignore list
 	_, ok = i.extension[filepath.Ext(path)]
+	slog.Debug(fmt.Sprintf("Checking if %s is in %v", filepath.Ext(path), i.extension))
 	if mapHasItems(i.extension) && patternMatch(path, i.extension) || ok {
 		return true
 	}
