@@ -22,13 +22,13 @@ type Engine struct {
 func (engine *Engine) Start() {
 	if engine.Config.Slog == nil {
 		engine.Config.Slog = newLogger(engine.Config.LogLevel)
-		engine.Config.ExternalSlog = false
+		engine.Config.externalSlog = false
 	} else {
-		engine.Config.ExternalSlog = true
+		engine.Config.externalSlog = true
 	}
 	slog.SetDefault(engine.Config.Slog)
 	if engine.Config.Ignore.IgnoreGit {
-		engine.Config.Ignore.Git = readGitIgnore(engine.Config.RootPath)
+		engine.Config.Ignore.git = readGitIgnore(engine.Config.RootPath)
 	}
 	engine.watch()
 }

@@ -19,7 +19,7 @@ type Config struct {
 	Debounce     int    `toml:"debounce"`
 	Callback     func(*EventCallback) (EventHandle)
 	Slog         *slog.Logger
-	ExternalSlog bool
+	externalSlog bool
 }
 
 // Reads a config.toml file and returns the engine
