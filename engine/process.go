@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"syscall"
 
 	"github.com/shirou/gopsutil/process"
 )
@@ -121,14 +120,13 @@ func runFromString(cmdString string, wait bool, root string) error {
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	err = cmd.Start()
 	if err != nil {
 		return err
 	}
 	// reset exec directory
 	if wait {
-		_, err = syscall.Wait4(-cmd.Process.Pid, nil, 0, nil)
+		_, err = cmd.Process.Wait()
 		if err != nil {
 			return err
 		}
