@@ -43,7 +43,7 @@ func (engine *Engine) verifyConfig() {
 		slog.Error("ERROR: Root Path not set")
 		os.Exit(1)
 	}
-	if engine.Config.ExecCommand == "" {
+	if engine.Config.ExecRun == "" {
 		slog.Error("ERROR: Exec Command not set")
 		os.Exit(1)
 	}

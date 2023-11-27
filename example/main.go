@@ -5,6 +5,7 @@ import (
 )
 
 func main() {
+	var empty struct{}
 	ignore := refresh.Ignore{
 		File:     []string{"ignore.go"},
 		Dir:      []string{"*/ignore*": true},
@@ -43,7 +44,7 @@ func RefreshCallback(e *refresh.EventCallback) refresh.EventHandle {
 		return refresh.EventContinue
 	case refresh.Remove:
 		return refresh.EventContinue
-		// Other Hotato Event Types...
+		// Other cases as needed ...
 	}
 	return refresh.EventContinue
 }
