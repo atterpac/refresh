@@ -70,11 +70,10 @@ type Config struct {
 }
 
 type Ignore struct {
-	Dir       map[string]bool `toml:"dir"`
-	File      map[string]bool `toml:"file"`
-	Extension map[string]bool `toml:"extension"`
-    GitIgnore bool            `toml:"git_ignore"`
-    Git       map[string]bool // Genrated on start
+	Dir       []string `toml:"dir"`
+	File      []string `toml:"file"`
+	Extension []string `toml:"extension"`
+    GitIgnore bool     `toml:"git_ignore"`
 }
 ```
 
@@ -87,11 +86,11 @@ import ( // other imports
 
 func main () {
 	ignore := refresh.Ignore{
-        // Can use * wildcards per usual 
+        // Can use * wildcards per usual filepath pattern matching (including /**/) 
         // ! denoted an invert in this example ignoring any extensions that are not *.go
-		File:      map[string]bool{"ignore*.go":true, ".gitignore"},
-		Dir:       map[string]bool{".git":true,"*/node_modules":true},
-		Extension: map[string]bool{"!*.go":true},
+		File:      []string{"ignore*.go", ".gitignore"},
+		Dir:       []string{".git","*/node_modules"},
+		Extension: []string{"!*.go"},
         IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
 	config := refresh.Config{

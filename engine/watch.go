@@ -17,7 +17,7 @@ func (engine *Engine) watch() {
 	engine.Chan = make(chan notify.EventInfo, 1)
 	// Mount watcher on route directory and subdirectories
 	if err := notify.Watch(engine.Config.RootPath+"/...", engine.Chan, notify.All); err != nil {
-		slog.Error(fmt.Sprintf("Error creating watcher: %s", err.Error()))
+		slog.Error(fmt.Sprintf("Creating watcher: %s", err.Error()))
 	}
 	defer notify.Stop(engine.Chan)
 	slog.Warn("Watching for file changes...")
@@ -27,6 +27,12 @@ func (engine *Engine) watch() {
 func watchEvents(engine *Engine, e chan notify.EventInfo) {
 	var debounceTime time.Time
 	var debounceThreshold = time.Duration(engine.Config.Debounce) * time.Millisecond
+	// Runs a background process that sustains through all reloads
+	err := runFromString(engine.Config.BackgroundExec, false)
+	if err != nil {
+		slog.Error(fmt.Sprintf("Running Background Process: %s", err.Error()))
+		os.Exit(1)
+	}
 	for {
 		ei := <-e
 		eventInfo, ok := eventMap[ei.Event()]

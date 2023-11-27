@@ -17,6 +17,13 @@ type Ignore struct {
 	Git       map[string]bool
 }
 
+type ignore struct {
+	dir       map[string]struct{}
+	file      map[string]struct{}
+	extension map[string]struct{}
+	git       map[string]struct{}
+}
+
 // Runs all ignore checks to decide if reload should happen
 func (i *Ignore) checkIgnore(path string) bool {
 	basePath := filepath.Base(path)

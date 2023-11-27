@@ -8,18 +8,22 @@ import (
 )
 
 type Config struct {
-	RootPath    string `toml:"root_path"`
-	PreExec     string `toml:"pre_exec"`
-	PreWait    bool   `toml:"pre_wait"`
-	ExecCommand string `toml:"exec_command"`
-	PostExec    string `toml:"post_exec"`
-	// Ignore uses a custom unmarshaler see ignore.go
-	Ignore       Ignore `toml:"ignore"`
-	LogLevel     string `toml:"log_level"`
-	Debounce     int    `toml:"debounce"`
-	Callback     func(*EventCallback) (EventHandle)
-	Slog         *slog.Logger
-	ExternalSlog bool
+	RootPath       string `toml:"root_path"`
+	BackgroundExec string `toml:"background_exec"`
+	PreBuild       string `toml:"pre_build"`
+	ExecBuild      string `toml:"build"` // Runs between a reload trigger and killing the old process
+	PostBuild      string `toml:"post_build"`
+	PreRun         string `toml:"pre_run"`
+	ExecRun        string `toml:"run_exec"` // Runs after a the old process has been stopped and after prerun
+	PostRun        string `toml:"post_run"`
+	CleanupExec    string `toml:"cleanup"` // Runs when an old process has been killed and before the new one starts
+	PostExec       string `toml:"post_exec"`
+	Ignore         Ignore `toml:"ignore"`
+	LogLevel       string `toml:"log_level"`
+	Debounce       int    `toml:"debounce"`
+	Callback       func(*EventCallback) EventHandle
+	Slog           *slog.Logger
+	ExternalSlog   bool
 }
 
 // Reads a config.toml file and returns the engine

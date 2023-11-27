@@ -11,20 +11,23 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-// TODO: Pipe stdout from process into the watch engine or the logs
 func (engine *Engine) reloadProcess() *process.Process {
+	// Runs before killing old process typically used to build the new version `go mod build -o ./main`
+	err := engine.buildProcess()
+	if err != nil {
+		slog.Error(fmt.Sprintf("Running Build Process: %s", err.Error()))
+		os.Exit(1)
+	}
 	// If there is a process already running kill it and run postexec command
 	if engine.isRunning() {
 		ok := killProcess(engine.Process)
 		if !ok {
-			slog.Error("Error releasing process: %s")
+			slog.Error("Releasing process")
 			return nil
 		}
-		// Post Exec
-		err := runFromString(engine.Config.PostExec, false)
+		err := runFromString(engine.Config.CleanupExec, true)
 		if err != nil {
-			slog.Error(fmt.Sprintf("Error running post-exec command: %s", err.Error()))
-			os.Exit(1)
+			slog.Error(fmt.Sprintf("Running Cleanup Process: %s", err.Error()))
 		}
 		if engine.ProcessLogPipe != nil {
 			slog.Debug("Closing log pipe")
@@ -32,26 +35,51 @@ func (engine *Engine) reloadProcess() *process.Process {
 			engine.ProcessLogPipe = nil
 		}
 	}
-	// Pre-Process Exec
-	err := runFromString(engine.Config.PreExec, engine.Config.PreWait)
+	// Runs after the new process version is built and old version has been killed
+	process, err := engine.runProcess()
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error running pre-exec command: %s", err.Error()))
-		os.Exit(1)
-	}
-	// Start Exec Process
-	process, err := engine.startProcess()
-	if err != nil {
-		slog.Error(fmt.Sprintf("Error starting process: %s", err.Error()))
+		slog.Error(fmt.Sprintf("Starting process: %s", err.Error()))
 		os.Exit(1)
 	}
 
 	return process
 }
 
+func (engine *Engine) buildProcess() error {
+	// Pre Build Process
+	err := runFromString(engine.Config.PreBuild, true)
+	if err != nil {
+		return err
+	}
+	// Build Process
+	err = runFromString(engine.Config.ExecBuild, true)
+	if err != nil {
+		return err
+	}
+	// Post-Build Process
+	err = runFromString(engine.Config.PostBuild, true)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (engine *Engine) runProcess() (*process.Process, error) {
+	err := runFromString(engine.Config.PreRun, false)
+	if err != nil {
+		return nil, err
+	}
+	process, err := engine.startProcess()
+	if err != nil {
+		return nil, err
+	}
+	return process, nil
+}
+
 // Start process with exec command and a root path to call it in
 func (engine *Engine) startProcess() (*process.Process, error) {
 	var err error
-	command := generateExec(engine.Config.ExecCommand)
+	command := generateExec(engine.Config.ExecRun)
 	cmd := exec.Command(command[0], command[1:]...)
 	cmd.Dir = engine.Config.RootPath
 
@@ -65,7 +93,6 @@ func (engine *Engine) startProcess() (*process.Process, error) {
 		}
 		go printSubProcess(engine.ProcessLogPipe)
 	}
-
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
@@ -101,7 +128,7 @@ func killProcess(process *process.Process) bool {
 }
 
 // Takes a string and runs it as a command by sliceing the string on spaces and passing it to exec
-func runFromString(cmdString string, wait bool) error {
+func runFromString(cmdString string, shouldBlock bool) error {
 	if cmdString == "" {
 		return nil
 	}
@@ -113,8 +140,7 @@ func runFromString(cmdString string, wait bool) error {
 	if err != nil {
 		return err
 	}
-	// If string ends in ~ wait for cmd to finish
-	if wait {
+	if shouldBlock {
 		err = cmd.Wait()
 		if err != nil {
 			return err
