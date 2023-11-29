@@ -28,7 +28,9 @@ go get github.com/atterpac/refresh
 
 `-w` Flag to decide wether the exec process should wait on the pre exec to complete
 
-`-e` Command to be called when a modification is detected for example `go run main.go`
+`-e` Commands to be called when a modification is detected in the form of a comma seperated list required refresh declrations 
+    
+**See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle) for more details**
 
 `-ae` Command to b be called when a modifcation is detected after the main process closes 
 
@@ -49,6 +51,23 @@ go get github.com/atterpac/refresh
 refresh -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
 ```
 
+#### Execute Lifecycle
+In order to provide flexibility in your execute calls and project reloads refresh provides two declarations that are required in your execute list 
+
+`"REFRESH"` -> The next execute after `"REFRESH"` will be consider the "main" subprocess to refresh 
+
+`"KILL_STALE"` -> This declaration is replaced with the calls to kill the "main" subprocess, if one is not running this step is ignored
+
+**THESE ARE REQUIRED INSIDE YOUR EXEC LIST TO PROPERLY FUNCTION**
+
+These declarations let refresh know when you would like to kill the stale process thats been out of date due to a filechange and when to start your new version for example
+
+` "go build -o app", "KILL_STALE", "REFRESH", "./app" ` -> This list would detect a change in the watched files build the new version kill the old one and start the new version (the most likely case)
+
+` "KILL_STALE", "go build -o app", "REFRESH", "./app" ` -> This list would detect a change in the watched files Kill the now stale version build a new one and run it
+
+Whatever command after REFRESH is considered your "main" subprocess and the one that is tracked inside of refresh
+
 ## Embedding into your dev project
 There can be some uses where you might want to start a watcher internally or for a tool for development refresh provides a function `NewEngineFromOptions` which takes an `refresh.Config` and allows for the `engine.Start()` function
 
@@ -57,23 +76,21 @@ Using refresh as a library also opens the ability to add a [Callback](https://gi
 ### Structs
 ```go
 type Config struct {
-	RootPath     string `toml:"root_path"`
-	PreExec      string `toml:"pre_exec"`
-    PreWait      bool   `toml:"pre_wait"`
-	ExecCommand  string `toml:"exec_command"`
-	PostExec     string `toml:"post_exec"`
-	Ignore       Ignore `toml:"ignore"`
-	LogLevel     string `toml:"log_level"`
-	Debounce     int    `toml:"debounce"`
-	Slog         *slog.Logger
-	ExternalSlog bool
+	RootPath       string   `toml:"root_path"`
+	BackgroundExec string   `toml:"background_exec"` // Execute that stays running and is unaffected by any reloads npm run dev for example
+	Ignore         Ignore   `toml:"ignore"`
+	ExecList       []string `toml:"exec_list"` // See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle)
+	LogLevel       string   `toml:"log_level"`
+	Debounce       int      `toml:"debounce"`
+	Callback       func(*EventCallback) EventHandle
+	Slog           *slog.Logger
 }
 
 type Ignore struct {
 	Dir       []string `toml:"dir"`
 	File      []string `toml:"file"`
 	Extension []string `toml:"extension"`
-    GitIgnore bool     `toml:"git_ignore"`
+    GitIgnore bool     `toml:"git_ignore"` // When true will check for a .gitignore in the root directory and add all entries to the ignore
 }
 ```
 
@@ -88,17 +105,17 @@ func main () {
 	ignore := refresh.Ignore{
         // Can use * wildcards per usual filepath pattern matching (including /**/) 
         // ! denoted an invert in this example ignoring any extensions that are not *.go
-		File:      []string{"ignore*.go", ".gitignore"},
-		Dir:       []string{".git","*/node_modules"},
-		Extension: []string{"!*.go"},
+		File:      []string{"ignore*.go"},  // Pattern match to ignore any golang files that start with ignore
+		Dir:       []string{".git","*/node_modules"}, // Ignore .git and any node_modules in the directory
+		Extension: []string{"!*.go"}, // Ignore all files that are not go
         IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
 	config := refresh.Config{
-		RootPath:    "./subExecProcess",
-		ExecCommand: "go run main.go",
+		RootPath:    "./subExecProcess", // Directory all exec will be called in and where the watcher is mounted
+        ExecList:    []string{"go build -o ./app", "KILL_STALE", "REFRESH", "./app"} 
 		LogLevel:    "info", // debug | info | warn | error | mute (discards all logs)
-		Ignore:      ignore,
-		Debounce:    1000,
+		Ignore:      ignore, 
+		Debounce:    1000, // in ms ignores reptitive reloads
 		Slog: nil, // Optionally provide a slog interface
                   // if nil a default will be provided
                   // If provided stdout will not be piped through refresh
@@ -170,7 +187,7 @@ Callbacks should return an refresh.EventHandle
 
 ```go
 // Called whenever a change is detected in the filesystem
-// By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload  see eventmap_[oos].go for default rules
+// By default we ignore file rename/remove and a bunch of other events that would likely cause breaking changes on a reload see eventmap_[oos].go for default rules
 type EventCallback struct {
 	Type Event  // Type of Notification (Write/Create/Remove...)
 	Time time.Time // time.Now() when event was triggered
@@ -178,9 +195,9 @@ type EventCallback struct {
 }
 // Available returns from the Callback function
 const (
-	EventContinue EventHandle = iota
-	EventBypass
-	EventIgnore
+	EventContinue EventHandle = iota // Continue with refresh ruleset 
+	EventBypass // Bypass all rule and reload the process
+	EventIgnore // Force Ignore event and continue watching 
 )
 
 func ExampleCallback(e refresh.EventCallback) refresh.EventHandle {
@@ -215,13 +232,8 @@ refresh.NewEngineFromTOML("path/to/toml")
 [config]
 # Relative to this files location
 root_path = "./"
-# Runs prior to the exec command starting
-pre_exec = "go mod tidy"
-pre_wait = true
-# Command to run on reload
-exec_command = "go run main.go"
-# Runs when a file reload is triggered after killing the previous process
-post_exec = ""
+# ordered list of execs to run including the required KILL_STALE, and REFERSH
+exec_list = ["go mod tidy", "go build -o ./app", "KILL_STALE", "REFRESH", "./app"
 # debug | info | warn | error | mute
 # Defaults to Info if not provided
 log_level = "info" 

@@ -6,4 +6,5 @@ import (
 
 func monitor() {
 	fmt.Println("This file is monitored and changed")
+	// New tings
 }

@@ -11,76 +11,53 @@ import (
 	"github.com/shirou/gopsutil/process"
 )
 
-func (engine *Engine) reloadProcess() *process.Process {
-	// Runs before killing old process typically used to build the new version `go mod build -o ./main`
-	err := engine.buildProcess()
-	if err != nil {
-		slog.Error(fmt.Sprintf("Running Build Process: %s", err.Error()))
-		os.Exit(1)
-	}
-	// If there is a process already running kill it and run postexec command
-	if engine.isRunning() {
-		ok := killProcess(engine.Process)
-		if !ok {
-			slog.Error("Releasing process")
-			return nil
+func (engine *Engine) reloadProcess() {
+	var reloadNext bool = false
+	var err error
+	for _, exec := range engine.Config.ExecList {
+		if reloadNext {
+			slog.Debug("Reloading Process")
+			engine.Process, err = engine.startProcess(exec)
+			if err != nil {
+				slog.Error(fmt.Sprintf("Starting Run command: %s", err.Error()))
+				os.Exit(1)
+			}
+			reloadNext = false
+			slog.Debug("Sucessfull refresh")
+			continue
 		}
-		err := runFromString(engine.Config.CleanupExec, true)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Running Cleanup Process: %s", err.Error()))
+		switch exec {
+		case "REFRESH":
+			slog.Debug("Refresh triggered")
+			reloadNext = true
+		case "KILL_STALE":
+			slog.Debug("No process found to kill")
+			if engine.isRunning() {
+				slog.Debug("Killing Stale Version")
+				ok := killProcess(engine.Process)
+				if !ok {
+					slog.Error("Releasing stale process")
+				}
+				if engine.ProcessLogPipe != nil {
+					slog.Debug("Closing log pipe")
+					engine.ProcessLogPipe.Close()
+					engine.ProcessLogPipe = nil
+				}
+			}
+		default:
+			err := runFromString(exec, true)
+			if err != nil {
+				slog.Error("Running Execute: %s %e", exec, err.Error())
+			}
 		}
-		if engine.ProcessLogPipe != nil {
-			slog.Debug("Closing log pipe")
-			engine.ProcessLogPipe.Close()
-			engine.ProcessLogPipe = nil
-		}
 	}
-	// Runs after the new process version is built and old version has been killed
-	process, err := engine.runProcess()
-	if err != nil {
-		slog.Error(fmt.Sprintf("Running pre-exec command: %s", err.Error()))
-		os.Exit(1)
-	}
-	return process
-}
-
-func (engine *Engine) buildProcess() error {
-	// Pre Build Process
-	err := runFromString(engine.Config.PreBuild, true)
-	if err != nil {
-		return err
-	}
-	// Build Process
-	err = runFromString(engine.Config.ExecBuild, true)
-	if err != nil {
-		return err
-	}
-	// Post-Build Process
-	err = runFromString(engine.Config.PostBuild, true)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (engine *Engine) runProcess() (*process.Process, error) {
-	err := runFromString(engine.Config.PreRun, false)
-	if err != nil {
-		return nil, err
-	}
-	process, err := engine.startProcess()
-	if err != nil {
-		return nil, err
-	}
-	return process, nil
 }
 
 // Start process with exec command and a root path to call it in
-func (engine *Engine) startProcess() (*process.Process, error) {
+func (engine *Engine) startProcess(runString string) (*process.Process, error) {
 	var err error
-	command := generateExec(engine.Config.ExecRun)
-	cmd := exec.Command(command[0], command[1:]...)
-	cmd.Dir = engine.Config.RootPath
+	cmdExec := generateExec(runString)
+	cmd := exec.Command(cmdExec[0], cmdExec[1:]...)
 	// If an external slog is provided do not pipe stdout to the engine
 	if !engine.Config.externalSlog {
 		cmd.Stderr = os.Stderr
@@ -89,10 +66,10 @@ func (engine *Engine) startProcess() (*process.Process, error) {
 			slog.Error(fmt.Sprintf("Getting stdout pipe: %s", err.Error()))
 			return nil, err
 		}
-		slog.Debug("Starting log pipe")
-		go printSubProcess(engine.ProcessLogPipe)
 	}
 	err = cmd.Start()
+	slog.Debug("Starting log pipe")
+	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
 		fmt.Println(cmd.Err)
 		return nil, err
@@ -131,6 +108,7 @@ func runFromString(cmdString string, shouldBlock bool) error {
 	if cmdString == "" {
 		return nil
 	}
+	slog.Debug(fmt.Sprintf("Running Exec Command: %s", cmdString))
 	commandSlice := generateExec(cmdString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	cmd.Stdout = os.Stdout
@@ -145,6 +123,7 @@ func runFromString(cmdString string, shouldBlock bool) error {
 			return err
 		}
 	}
+	slog.Debug(fmt.Sprintf("Complete Exec Command: %s", cmdString))
 	return nil
 }
 

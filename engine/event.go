@@ -18,17 +18,16 @@ type EventCallback struct {
 	Path string    // Full path to the modified file
 }
 
-type EventHandle int
 // EventHandle is used to determine how to handle a reload callback 
+type EventHandle int
 const (
 	EventContinue EventHandle = iota
 	EventBypass
 	EventIgnore
 )
 
-type Event int
-
 // Event is used to determine what type of event was triggered
+type Event int
 const (
 	Create Event = iota
 	Write
