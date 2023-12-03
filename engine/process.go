@@ -6,55 +6,40 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
-
-	"github.com/shirou/gopsutil/process"
 )
 
 func (engine *Engine) reloadProcess() {
-	var reloadNext bool = false
-	var err error
-	for _, exec := range engine.Config.ExecList {
-		if reloadNext {
-			slog.Debug("Reloading Process")
-			engine.Process, err = engine.startProcess(exec)
-			if err != nil {
-				slog.Error(fmt.Sprintf("Starting Run command: %s", err.Error()))
-				os.Exit(1)
-			}
-			reloadNext = false
-			slog.Debug("Sucessfull refresh")
-			continue
+	if engine.Config.ExecList == nil && engine.Config.ExecStruct == nil {
+		return
+	}
+	if engine.Config.ExecList != nil {
+		engine.reloadFromList()
+	}
+	if engine.Config.ExecStruct != nil {
+		engine.reloadFromStruct()
+	}
+}
+
+func (engine *Engine) reloadFromStruct() {
+	for _, ex := range engine.Config.ExecStruct {
+		err := ex.execute(engine)
+		if err != nil {
+			slog.Error("Running Execute: %s %e", ex.Cmd, err.Error())
 		}
-		switch exec {
-		case "REFRESH":
-			slog.Debug("Refresh triggered")
-			reloadNext = true
-		case "KILL_STALE":
-			slog.Debug("No process found to kill")
-			if engine.isRunning() {
-				slog.Debug("Killing Stale Version")
-				ok := killProcess(engine.Process)
-				if !ok {
-					slog.Error("Releasing stale process")
-				}
-				if engine.ProcessLogPipe != nil {
-					slog.Debug("Closing log pipe")
-					engine.ProcessLogPipe.Close()
-					engine.ProcessLogPipe = nil
-				}
-			}
-		default:
-			err := runFromString(exec, true)
-			if err != nil {
-				slog.Error("Running Execute: %s %e", exec, err.Error())
-			}
+	}
+}
+
+func (engine *Engine) reloadFromList() {
+	for _, ex := range engine.Config.ExecList {
+		err := execFromString(ex)
+		if err != nil {
+			slog.Error("Running Execute: %s %e", ex, err.Error())
 		}
 	}
 }
 
 // Start process with exec command and a root path to call it in
-func (engine *Engine) startProcess(runString string) (*process.Process, error) {
+func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 	var err error
 	cmdExec := generateExec(runString)
 	cmd := exec.Command(cmdExec[0], cmdExec[1:]...)
@@ -74,16 +59,15 @@ func (engine *Engine) startProcess(runString string) (*process.Process, error) {
 		fmt.Println(cmd.Err)
 		return nil, err
 	}
-	process, err := process.NewProcess(int32(cmd.Process.Pid))
 	if err != nil {
 		slog.Error(fmt.Sprintf("Getting new process: %s", err.Error()))
 		return nil, err
 	}
-	return process, nil
+	return cmd.Process, nil
 }
 
 // Kill spawned child process
-func killProcess(process *process.Process) bool {
+func killProcess(process *os.Process) bool {
 	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
 	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
 	if runtime.GOOS == "windows" {
@@ -103,35 +87,6 @@ func killProcess(process *process.Process) bool {
 	return true
 }
 
-// Takes a string and runs it as a command by sliceing the string on spaces and passing it to exec
-func runFromString(cmdString string, shouldBlock bool) error {
-	if cmdString == "" {
-		return nil
-	}
-	slog.Debug(fmt.Sprintf("Running Exec Command: %s", cmdString))
-	commandSlice := generateExec(cmdString)
-	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	if shouldBlock {
-		err = cmd.Wait()
-		if err != nil {
-			return err
-		}
-	}
-	slog.Debug(fmt.Sprintf("Complete Exec Command: %s", cmdString))
-	return nil
-}
-
-// Takes a string and splits it on spaces to create a slice of strings
-func generateExec(cmd string) []string {
-	// String split on spaces
-	return strings.Split(cmd, " ")
-}
 
 // Check if a child process is running
 func (engine *Engine) isRunning() bool {

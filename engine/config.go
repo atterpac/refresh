@@ -15,6 +15,7 @@ type Config struct {
 	BackgroundExec string   `toml:"background_exec"`
 	Ignore         Ignore   `toml:"ignore"`
 	ExecList       []string `toml:"exec_lifecycle"`
+	ExecStruct     []Execute
 	ignoreMap      ignoreMap
 	LogLevel       string `toml:"log_level"`
 	Debounce       int    `toml:"debounce"`
@@ -40,35 +41,11 @@ func (engine *Engine) verifyConfig() {
 		slog.Error("Required Root Path is not set")
 		os.Exit(1)
 	}
-	verifyExecuteList(engine.Config.ExecList)
 	slog.Debug("Config Verified")
 	// Change directory executes are called in to match root directory
 	changeWorkingDirectory(engine.Config.RootPath)
 }
 
-func verifyExecuteList(list []string) {
-	var refresh, kill bool
-	for _, exec := range list {
-		switch exec {
-		case "REFRESH":
-			refresh = true
-		case "KILL_STALE":
-			kill = true
-		}
-	}
-	if !refresh && !kill {
-		slog.Error(`Execute List must contain "REFRESH" and "KILL_STALE" in order for refresh to function`)
-		os.Exit(1)
-	}
-	if !refresh {
-		slog.Error(`Execute List must contain "REFRESH" in the item before your primary execute`)
-		os.Exit(1)
-	}
-	if !kill {
-		slog.Error(`Execute List must contain "KILL_STALE" in the position where you would like to kill a process to be replaced`)
-		os.Exit(1)
-	}
-}
 
 func readGitIgnore(path string) map[string]struct{} {
 	file, err := os.Open(path + "/.gitignore")
@@ -105,7 +82,7 @@ func readGitIgnore(path string) map[string]struct{} {
 func changeWorkingDirectory(path string) {
 	cleaned := strings.TrimPrefix(path, ".")
 	cleaned = strings.TrimPrefix(cleaned, "/")
-	cleaned = strings.TrimPrefix(cleaned, `\`) // Windows >:( 
+	cleaned = strings.TrimPrefix(cleaned, `\`) // Windows >:(
 	wd, err := os.Getwd()
 	if err != nil {
 		slog.Error("Getting Working Directory")

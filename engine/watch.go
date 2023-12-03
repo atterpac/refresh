@@ -52,6 +52,10 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			}
 		}
 		if eventInfo.Reload {
+			if !checkExtension(ei.Path(), engine.Config.ignoreMap.extension) {
+				slog.Debug(fmt.Sprintf("Ignoring Exentension %s change: %s", ei.Event().String(), ei.Path()))
+				continue
+			}
 			// Check if file should be ignored
 			if engine.Config.ignoreMap.checkIgnore(ei.Path()) {
 				slog.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String(), ei.Path()))

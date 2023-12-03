@@ -5,21 +5,36 @@ import (
 )
 
 func main() {
+	tidy := refresh.Execute{
+		Cmd:        "go mod tidy",
+		IsBlocking: true,
+		IsPrimary:  false,
+	}
+	build := refresh.Execute{
+		Cmd:        "go build -o ./bin/myapp",
+		IsBlocking: true,
+		IsPrimary:  false,
+	}
+	kill := refresh.KILL_STALE
+	run := refresh.Execute{
+		Cmd:        "./bin/myapp",
+		IsBlocking: false,
+		IsPrimary:  true,
+	}
 	ignore := refresh.Ignore{
-		File:      []string{"ignore.go"},
-		Dir:       []string{"*/ignore*"},
-		Extension: []string{".db"},
-		IgnoreGit: true,
+		File:         []string{"ignore.go"},
+		Dir:          []string{"*/ignore*"},
+		WatchedExten: []string{"*.go", "*.mod", "*.js"},
+		IgnoreGit:    true,
 	}
 	config := refresh.Config{
 		RootPath: "./test",
 		// Below is ran when a reload is triggered before killing the stale version
-		Ignore:   ignore,
-		Debounce: 1000,
-		LogLevel: "info",
-		Callback: RefreshCallback,
-		Slog:     nil,
-		ExecList: []string{"go mod tidy", "go build -o ./bin/myapp", "KILL_STALE", "REFRESH", "./bin/myapp"},
+		Ignore:     ignore,
+		Debounce:   1000,
+		LogLevel:   "debug",
+		ExecStruct: []refresh.Execute{tidy, build, kill, run},
+		Slog:       nil,
 	}
 	watch := refresh.NewEngineFromConfig(config)
 

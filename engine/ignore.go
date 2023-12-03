@@ -8,10 +8,10 @@ import (
 )
 
 type Ignore struct {
-	Dir       []string `toml:"dir"`
-	File      []string `toml:"file"`
-	Extension []string `toml:"extension"`
-	IgnoreGit bool     `toml:"git"`
+	Dir          []string `toml:"dir"`
+	File         []string `toml:"file"`
+	WatchedExten []string `toml:"extension"`
+	IgnoreGit    bool     `toml:"git"`
 }
 
 type ignoreMap struct {
@@ -28,20 +28,24 @@ func (i *ignoreMap) checkIgnore(path string) bool {
 	if isTmp(basePath) {
 		return true
 	}
-	if isIgnoreDir(path, i.dir){
+	if isIgnoreDir(path, i.dir) {
 		return true
 	}
 	dir := checkIgnoreMap(path, i.dir)
 	file := checkIgnoreMap(path, i.file)
-	ext := checkIgnoreMap(path, i.extension)
 	git := checkIgnoreMap(path, i.git)
-	return dir || file || ext || git 
+	return dir || file || git
 }
 
 func checkIgnoreMap(path string, rules map[string]struct{}) bool {
 	slog.Debug(fmt.Sprintf("Checking map: %v for %s", rules, path))
-	_, ok := rules[filepath.Ext(path)]
-	return mapHasItems(rules) && patternMatch(path, rules) || ok 
+	_, ok := rules[path]
+	return mapHasItems(rules) && patternMatch(path, rules) || ok
+}
+
+func checkExtension(path string, rules map[string]struct{}) bool {
+	slog.Debug(fmt.Sprintf("Checking Extension map: %v for %s", rules, path))
+	return patternMatch(path, rules)
 }
 
 func mapHasItems(m map[string]struct{}) bool {
@@ -70,7 +74,7 @@ func convertToIgnoreMap(ignore Ignore) ignoreMap {
 	return ignoreMap{
 		file:      convertToMap(ignore.File),
 		dir:       convertToMap(ignore.Dir),
-		extension: convertToMap(ignore.Extension),
+		extension: convertToMap(ignore.WatchedExten),
 	}
 }
 
@@ -102,7 +106,7 @@ func (i *Ignore) UnmarshalTOML(data interface{}) error {
 			case "file":
 				i.File = strArray
 			case "extension":
-				i.Extension = strArray
+				i.WatchedExten = strArray
 			}
 		}
 	}

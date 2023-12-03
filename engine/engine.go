@@ -8,11 +8,10 @@ import (
 	"runtime"
 
 	"github.com/rjeczalik/notify"
-	"github.com/shirou/gopsutil/process"
 )
 
 type Engine struct {
-	Process        *process.Process
+	Process        *os.Process
 	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config"`
@@ -32,7 +31,7 @@ func (engine *Engine) Start() {
 	if engine.Config.Ignore.IgnoreGit {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
-	err := runFromString(engine.Config.BackgroundExec, false)
+	err := execFromString(engine.Config.BackgroundExec)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Running Background Process: %s", err.Error()))
 		os.Exit(1)

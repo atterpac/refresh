@@ -8,7 +8,8 @@ import (
 
 func patternMatch(path string, PatternMap map[string]struct{}) bool {
 	for pattern := range PatternMap {
-		if patternCompare(path, pattern) {
+		slog.Debug(fmt.Sprintf("Checking: %s with %s", path, pattern))
+		if patternCompare(pattern, path) {
 			slog.Debug(fmt.Sprintf("Matched: %s with %s", path, pattern))
 			return true
 		}
