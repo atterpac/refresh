@@ -31,6 +31,13 @@ func (engine *Engine) Start() {
 	if engine.Config.Ignore.IgnoreGit {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
+	if engine.Config.BackgroundStruct.Cmd != "" {
+		err := execFromString(engine.Config.BackgroundStruct.Cmd)	
+		if err != nil {
+			slog.Error("Running background process", "Process", engine.Config.BackgroundStruct.Cmd)
+			os.Exit(1)
+		}
+	}
 	err := execFromString(engine.Config.BackgroundExec)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Running Background Process: %s", err.Error()))

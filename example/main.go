@@ -5,6 +5,9 @@ import (
 )
 
 func main() {
+	background := refresh.Execute {
+		Cmd: "pwd",
+	}
 	tidy := refresh.Execute{
 		Cmd:        "go mod tidy",
 		IsBlocking: true,
@@ -17,7 +20,8 @@ func main() {
 	}
 	kill := refresh.KILL_STALE
 	run := refresh.Execute{
-		Cmd:        "./bin/myapp",
+		Cmd:        "./myapp",
+		ChangeDir: "./bin",
 		IsBlocking: false,
 		IsPrimary:  true,
 	}
@@ -29,6 +33,7 @@ func main() {
 	}
 	config := refresh.Config{
 		RootPath: "./test",
+		BackgroundStruct: background,
 		// Below is ran when a reload is triggered before killing the stale version
 		Ignore:     ignore,
 		Debounce:   1000,

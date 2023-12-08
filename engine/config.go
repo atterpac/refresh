@@ -5,23 +5,25 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
-	RootPath       string   `toml:"root_path"`
-	BackgroundExec string   `toml:"background_exec"`
-	Ignore         Ignore   `toml:"ignore"`
-	ExecList       []string `toml:"exec_lifecycle"`
-	ExecStruct     []Execute
-	ignoreMap      ignoreMap
-	LogLevel       string `toml:"log_level"`
-	Debounce       int    `toml:"debounce"`
-	Callback       func(*EventCallback) EventHandle
-	Slog           *slog.Logger
-	externalSlog   bool
+	RootPath         string `toml:"root_path"`
+	BackgroundExec   string `toml:"background_exec"`
+	BackgroundStruct Execute
+	Ignore           Ignore   `toml:"ignore"`
+	ExecList         []string `toml:"exec_lifecycle"`
+	ExecStruct       []Execute
+	ignoreMap        ignoreMap
+	LogLevel         string `toml:"log_level"`
+	Debounce         int    `toml:"debounce"`
+	Callback         func(*EventCallback) EventHandle
+	Slog             *slog.Logger
+	externalSlog     bool
 }
 
 // Reads a config.toml file and returns the engine
@@ -44,13 +46,14 @@ func (engine *Engine) verifyConfig() {
 	engine.verifyExecute()
 	slog.Debug("Config Verified")
 	// Change directory executes are called in to match root directory
-	changeWorkingDirectory(engine.Config.RootPath)
+	cleaned := cleanDirectory(engine.Config.RootPath)
+	changeWorkingDirectory(cleaned)
 }
 
 // Verify execute structs
 func (engine *Engine) verifyExecute() {
 	var primary bool
-	if engine.Config.ExecList == nil && engine.Config.ExecStruct == nil {
+	if len(engine.Config.ExecList) == 2 && len(engine.Config.ExecStruct) < 2 {
 		slog.Error("Execute list or struct's must be provided in the refresh config")
 		os.Exit(1)
 	}
@@ -66,14 +69,14 @@ func (engine *Engine) verifyExecute() {
 		}
 	} else {
 		var kill bool
-		var refresh bool 
+		var refresh bool
 		for _, exe := range engine.Config.ExecList {
 			switch exe {
 			case "REFRESH":
 				refresh = true
-			case "KILL_STALE": 
+			case "KILL_STALE":
 				kill = true
-			default: 
+			default:
 				continue
 			}
 		}
@@ -91,7 +94,6 @@ func (engine *Engine) verifyExecute() {
 		}
 	}
 }
-
 
 func readGitIgnore(path string) map[string]struct{} {
 	file, err := os.Open(path + "/.gitignore")
@@ -125,15 +127,21 @@ func readGitIgnore(path string) map[string]struct{} {
 	return linesMap
 }
 
-func changeWorkingDirectory(path string) {
+func cleanDirectory(path string) string {
 	cleaned := strings.TrimPrefix(path, ".")
 	cleaned = strings.TrimPrefix(cleaned, "/")
-	cleaned = strings.TrimPrefix(cleaned, `\`) // Windows >:(
+	if runtime.GOOS == "windows" {
+		cleaned = strings.TrimPrefix(cleaned, `\`) // Windows >:(
+	}
 	wd, err := os.Getwd()
 	if err != nil {
 		slog.Error("Getting Working Directory")
 	}
-	err = os.Chdir(wd + "/" + cleaned)
+	return wd + "/" + cleaned
+}
+
+func changeWorkingDirectory(path string) {
+	err := os.Chdir(path)
 	if err != nil {
 		slog.Error("Setting new directory", "dir", path)
 	}

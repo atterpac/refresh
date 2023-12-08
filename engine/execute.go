@@ -10,9 +10,10 @@ import (
 
 type Execute struct {
 	Cmd        string
+	ChangeDir  string // If directory needs to be changed to call this command relative to the root path
 	IsBlocking bool
 	IsPrimary  bool // Only one primary command can be run at a time
-	process    *os.Process
+	process    *os.Process // Stores the Exec.Start() process
 }
 
 var KILL_STALE = Execute{
@@ -26,8 +27,17 @@ var KILL_EXEC = "KILL_STALE"
 
 func (ex *Execute) execute(engine *Engine) error {
 	var err error
+	var restoreDir string = ""
 	if ex.Cmd == "" {
 		return nil
+	}
+	if ex.ChangeDir != "" {
+		restoreDir, err = os.Getwd()
+		slog.Info("Change Directory Set", "WD", restoreDir)
+		if err != nil {
+			slog.Error("Getting working directory")
+		}
+		changeWorkingDirectory(ex.ChangeDir)
 	}
 	if ex.IsPrimary {
 		slog.Debug("Reloading Process")
@@ -37,6 +47,10 @@ func (ex *Execute) execute(engine *Engine) error {
 			os.Exit(1)
 		}
 		slog.Debug("Sucessfull refresh")
+		if restoreDir != "" {
+			slog.Info("Restoring working Dir")
+			changeWorkingDirectory(restoreDir)
+		}
 		return nil
 	}
 	switch ex.Cmd {
@@ -75,6 +89,10 @@ func (ex *Execute) execute(engine *Engine) error {
 		}
 		slog.Debug(fmt.Sprintf("Complete Exec Command: %s", ex.Cmd))
 	}
+	if restoreDir != "" {
+		slog.Info("Restoring working Dir")
+		changeWorkingDirectory(restoreDir)
+    }
 	return nil
 }
 

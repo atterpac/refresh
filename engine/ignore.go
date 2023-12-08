@@ -10,7 +10,7 @@ import (
 type Ignore struct {
 	Dir          []string `toml:"dir"`
 	File         []string `toml:"file"`
-	WatchedExten []string `toml:"extension"`
+	WatchedExten []string `toml:"watched_extension"`
 	IgnoreGit    bool     `toml:"git"`
 }
 
@@ -86,29 +86,3 @@ func convertToMap(slice []string) map[string]struct{} {
 	return m
 }
 
-// Custom Unmarshal
-// Maybe not neccessary anymore?
-func (i *Ignore) UnmarshalTOML(data interface{}) error {
-	m, ok := data.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("expected a map")
-	}
-	for key, value := range m {
-		switch key {
-		case "dir", "file", "extension":
-			strArray, ok := value.([]string)
-			if !ok {
-				return fmt.Errorf("%s should be an array", key)
-			}
-			switch key {
-			case "dir":
-				i.Dir = strArray
-			case "file":
-				i.File = strArray
-			case "extension":
-				i.WatchedExten = strArray
-			}
-		}
-	}
-	return nil
-}

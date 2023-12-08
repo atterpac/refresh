@@ -50,9 +50,9 @@ refresh -p ./ -e "go mod tidy, go build -o ./myapp, KILL_STALE, REFRESH, ./myapp
 #### Execute Lifecycle
 In order to provide flexibility in your execute calls and project reloads refresh provides two declarations that are required in your execute list 
 
-`"REFRESH"` -> The next execute after `"REFRESH"` will be consider the "main" subprocess to refresh 
+`"REFRESH_EXEC"` -> The next execute after `"REFRESH"` will be consider the "main" subprocess to refresh 
 
-`"KILL_STALE"` -> This declaration is replaced with the calls to kill the "main" subprocess, if one is not running this step is ignored
+`"KILL_EXEC"` -> This declaration is replaced with the calls to kill the "main" subprocess, if one is not running this step is ignored
 
 **THESE ARE REQUIRED INSIDE YOUR EXEC LIST TO PROPERLY FUNCTION**
 
@@ -128,7 +128,8 @@ func main () {
 	kill := refresh.KILL_STALE 
     // Primary process usually runs your binary
 	run := refresh.Execute{
-		Cmd:        "./bin/myapp",
+        ChangeDir   "./bin", // Change directory to call command in
+		Cmd:        "./myapp",
 		IsBlocking: false, // Should not block because it doesnt finish until Killed by refresh
 		IsPrimary:  true, // This is the main process refersh is rerunning so denoting it as primary
 	}
