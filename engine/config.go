@@ -41,9 +41,55 @@ func (engine *Engine) verifyConfig() {
 		slog.Error("Required Root Path is not set")
 		os.Exit(1)
 	}
+	engine.verifyExecute()
 	slog.Debug("Config Verified")
 	// Change directory executes are called in to match root directory
 	changeWorkingDirectory(engine.Config.RootPath)
+}
+
+// Verify execute structs
+func (engine *Engine) verifyExecute() {
+	var primary bool
+	if engine.Config.ExecList == nil && engine.Config.ExecStruct == nil {
+		slog.Error("Execute list or struct's must be provided in the refresh config")
+		os.Exit(1)
+	}
+	if engine.Config.ExecList == nil {
+		for _, exe := range engine.Config.ExecStruct {
+			if exe.IsPrimary {
+				if primary {
+					slog.Error("Only one primary function can be set")
+					os.Exit(1)
+				}
+				primary = true
+			}
+		}
+	} else {
+		var kill bool
+		var refresh bool 
+		for _, exe := range engine.Config.ExecList {
+			switch exe {
+			case "REFRESH":
+				refresh = true
+			case "KILL_STALE": 
+				kill = true
+			default: 
+				continue
+			}
+		}
+		if !kill && !refresh {
+			slog.Error("Execute List must contain `KILL_STALE` and `REFRESH`")
+			os.Exit(1)
+		}
+		if !kill {
+			slog.Error("Execute list must contain `KILL_STALE`")
+			os.Exit(1)
+		}
+		if !refresh {
+			slog.Error("Execut list must contain `REFRESH`")
+			os.Exit(1)
+		}
+	}
 }
 
 
