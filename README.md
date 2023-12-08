@@ -117,18 +117,16 @@ func main () {
 	tidy := refresh.Execute{
 		Cmd:        "go mod tidy",
 		IsBlocking: true, // Next command should wait for this to finish
-		IsPrimary:  false,
 	}
 	build := refresh.Execute{
 		Cmd:        "go build -o ./bin/myapp",
 		IsBlocking: true, // Wait to kill (next step) until the new binary is built
-		IsPrimary:  false,
 	}
     // Provided KILL_STALE will tell refresh when you would like to remove the stale process to prepare to launch the new one
 	kill := refresh.KILL_STALE 
     // Primary process usually runs your binary
 	run := refresh.Execute{
-        ChangeDir   "./bin", // Change directory to call command in
+        ChangeDir:   "./bin", // Change directory to call command in
 		Cmd:        "./myapp",
 		IsBlocking: false, // Should not block because it doesnt finish until Killed by refresh
 		IsPrimary:  true, // This is the main process refersh is rerunning so denoting it as primary

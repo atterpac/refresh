@@ -85,4 +85,3 @@ func convertToMap(slice []string) map[string]struct{} {
 	}
 	return m
 }
-

@@ -9,10 +9,10 @@ import (
 )
 
 type Execute struct {
-	Cmd        string
-	ChangeDir  string // If directory needs to be changed to call this command relative to the root path
-	IsBlocking bool
-	IsPrimary  bool // Only one primary command can be run at a time
+	Cmd        string      // Execute command
+	ChangeDir  string      // If directory needs to be changed to call this command relative to the root path
+	IsBlocking bool        // Should the following executes wait for this one to complete
+	IsPrimary  bool        // Only one primary command can be run at a time
 	process    *os.Process // Stores the Exec.Start() process
 }
 
@@ -92,7 +92,7 @@ func (ex *Execute) execute(engine *Engine) error {
 	if restoreDir != "" {
 		slog.Info("Restoring working Dir")
 		changeWorkingDirectory(restoreDir)
-    }
+	}
 	return nil
 }
 

@@ -46,7 +46,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 				slog.Debug("Bypassing all rulesets and reloading process...")
 				engine.reloadProcess()
 				continue
-			case EventIgnore:// Ignore Event and continue with monitoring
+			case EventIgnore: // Ignore Event and continue with monitoring
 				continue
 			default:
 			}
