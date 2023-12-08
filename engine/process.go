@@ -30,11 +30,9 @@ func (engine *Engine) reloadFromStruct() {
 }
 
 func (engine *Engine) reloadFromList() {
-	for _, ex := range engine.Config.ExecList {
-		err := execFromString(ex)
-		if err != nil {
-			slog.Error("Running Execute: %s %e", ex, err.Error())
-		}
+	err := engine.execFromList()
+	if err != nil {
+		slog.Error(fmt.Sprintf("Running from exec list: %s", err))
 	}
 }
 
@@ -86,7 +84,6 @@ func killProcess(process *os.Process) bool {
 	}
 	return true
 }
-
 
 // Check if a child process is running
 func (engine *Engine) isRunning() bool {
