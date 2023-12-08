@@ -24,15 +24,11 @@ go get github.com/atterpac/refresh
 #### Flags
 `-p` Root path that will be watched and commands will be executed in typically this is './'
 
-`-be` Command to be called before the exec command for example `go mod tidy`
-
 `-w` Flag to decide wether the exec process should wait on the pre exec to complete
 
 `-e` Commands to be called when a modification is detected in the form of a comma seperated list required refresh declrations 
     
 **See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle) for more details**
-
-`-ae` Command to b be called when a modifcation is detected after the main process closes 
 
 `-l` Log Level to display options can include `"debug", "info","warn","error", "mute"`
 
@@ -48,7 +44,7 @@ go get github.com/atterpac/refresh
 
 #### Example
 ```bash
-refresh -p ./ -e "go run main.go" -be "go mod tidy" -ae "rm ./main" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
+refresh -p ./ -e "go mod tidy, go build -o ./myapp, KILL_STALE, REFRESH, ./myapp" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
 ```
 
 #### Execute Lifecycle
@@ -87,10 +83,16 @@ type Config struct {
 }
 
 type Ignore struct {
-	Dir       []string `toml:"dir"`
-	File      []string `toml:"file"`
-	Extension []string `toml:"extension"`
-    GitIgnore bool     `toml:"git_ignore"` // When true will check for a .gitignore in the root directory and add all entries to the ignore
+	Dir        []string `toml:"dir"` // Specfic directory to ignore ie; node_modules
+	File       []string `toml:"file"` // Specific file to ignore 
+	WatchExten []string `toml:"extension"` // Extensions to watch NOT ignore, ie; `*.go, *.js` would ignore any file that is not go or javascript
+    GitIgnore  bool     `toml:"git_ignore"` // When true will check for a .gitignore in the root directory and add all entries to the ignore
+}
+
+type Execute struct {
+	Cmd        string
+	IsBlocking bool // Should the next command wait for this command to finish 
+	IsPrimary  bool // Only one primary command can be run at a time
 }
 ```
 
@@ -102,32 +104,72 @@ import ( // other imports
     )
 
 func main () {
+    // Setup your watched exensions and any ignored files or directories
 	ignore := refresh.Ignore{
         // Can use * wildcards per usual filepath pattern matching (including /**/) 
         // ! denoted an invert in this example ignoring any extensions that are not *.go
-		File:      []string{"ignore*.go"},  // Pattern match to ignore any golang files that start with ignore
-		Dir:       []string{".git","*/node_modules"}, // Ignore .git and any node_modules in the directory
-		Extension: []string{"!*.go"}, // Ignore all files that are not go
+        WatchedExten: []string{"*.go"}, // Ignore all files that are not go
+		File:         []string{"ignore*.go"},  // Pattern match to ignore any golang files that start with ignore
+		Dir:          []string{".git","*/node_modules", "!api/*"}, // Ignore .git and any node_modules in the directory or anything not within the api directory
         IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
-	config := refresh.Config{
-		RootPath:    "./subExecProcess", // Directory all exec will be called in and where the watcher is mounted
-        ExecList:    []string{"go build -o ./app", "KILL_STALE", "REFRESH", "./app"} 
-		LogLevel:    "info", // debug | info | warn | error | mute (discards all logs)
-		Ignore:      ignore, 
-		Debounce:    1000, // in ms ignores reptitive reloads
-		Slog: nil, // Optionally provide a slog interface
-                  // if nil a default will be provided
-                  // If provided stdout will not be piped through refresh
-
-		// Optionally provide a callback function to be called upon file notification events
-        	Callback: func(*EventCallback) EventHandle 
+    // Build execute structs
+	tidy := refresh.Execute{
+		Cmd:        "go mod tidy",
+		IsBlocking: true, // Next command should wait for this to finish
+		IsPrimary:  false,
 	}
+	build := refresh.Execute{
+		Cmd:        "go build -o ./bin/myapp",
+		IsBlocking: true,
+		IsPrimary:  false,
+	}
+    // Provided KILL_STALE will tell refresh when you would like to remove the out of date version to prepare to launch the new one
+	kill := refresh.KILL_STALE
+	run := refresh.Execute{
+		Cmd:        "./bin/myapp",
+		IsBlocking: false, // Should not block because it doesnt finish until Killed by refresh
+		IsPrimary:  true, // This is the main process refersh is rerunning so denoting it as primary
+	}
+
+    // Config to pass into refresh.NewEngineFromConfig()
+	config := refresh.Config{
+		RootPath: "./test",
+		// Below is ran when a reload is triggered before killing the stale version
+		Ignore:     ignore,
+		Debounce:   1000,
+		LogLevel:   "debug",
+        Callback:   RefreshCallback, // func(*refresh.Callback) refresh.EventHandle {}
+		ExecStruct: []refresh.Execute{tidy, build, kill, run},
+        // Alternatively for easier config but less control over executes
+        // KILL_STALE and REFRESH are required for the ExecList to function
+        // ExecList: []string{"go mod tidy", "go build -o ./myapp", "KILL_STALE", "REFRESH", "./myapp"}
+		Slog:       nil, // Optionally provide a slog interface
+                         // if nil a default will be provided
+                         // If provided stdout will not be piped through refresh
+	}
+
 	engine := refresh.NewEngineFromConfig(config)
 	engine.Start()
 
 	// Stop monitoring files and kill child processes
 	engine.Stop()
+}
+
+func RefreshCallback(e *refresh.EventCallback) refresh.EventHandle {
+    switch e.Type {
+        case refresh.Create:
+            return refresh.EventIgnore
+        case refresh.Write:
+                if e.Path == "test/monitored/ignore.go" {
+                    return refresh.EventBypass
+                }
+                return refresh.EventContinue
+        case refresh.Remove:
+                    return refresh.EventContinue
+                        // Other cases as needed ...
+    }
+    return refresh.EventContinue
 }
 ```
 ### Reload Callback
@@ -245,8 +287,8 @@ debounce = 1000 # Milliseconds
 dir = [".git", "node_modules", "newdir"]
 # Files to ignore
 file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
-# File extensions to ignore
-extension = [".db", ".sqlite"]
+# File extensions to watch
+watched_extensions = [".db", ".sqlite"]
 # Add .gitignore paths to ignore
 git_ignore = true
 ```

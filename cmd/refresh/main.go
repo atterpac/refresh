@@ -33,7 +33,7 @@ func main() {
 	flag.StringVar(&configPath, "f", "", "File to read config from")
 	flag.StringVar(&ignoreDir, "id", "", "Ignore Directory list as comma-separated list")
 	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
-	flag.StringVar(&ignoreExt, "ie", "", "Ignore Extension list as comma-separated list")
+	flag.StringVar(&ignoreExt, "ie", "", "Watched Extension list as comma-separated list")
 	flag.StringVar(&debounce, "d", "1000", "Debounce time in milliseconds")
 	flag.BoolVar(&versFlag, "v", false, "Print version")
 	flag.BoolVar(&gitIgnore, "git", false, "Read from .gitignore")
@@ -48,10 +48,10 @@ func main() {
 		watch = refresh.NewEngineFromTOML(configPath)
 	} else {
 		ignore := refresh.Ignore{
-			File:      strings.Split(ignoreFile, ","),
-			Dir:       strings.Split(ignoreDir, ","),
-			Extension: strings.Split(ignoreExt, ","),
-			IgnoreGit: gitIgnore,
+			File:         strings.Split(ignoreFile, ","),
+			Dir:          strings.Split(ignoreDir, ","),
+			WatchedExten: strings.Split(ignoreExt, ","),
+			IgnoreGit:    gitIgnore,
 		}
 		// Debounce string to int
 		debounceThreshold, err := strconv.Atoi(debounce)
