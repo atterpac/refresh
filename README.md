@@ -121,29 +121,32 @@ func main () {
 	}
 	build := refresh.Execute{
 		Cmd:        "go build -o ./bin/myapp",
-		IsBlocking: true,
+		IsBlocking: true, // Wait to kill (next step) until the new binary is built
 		IsPrimary:  false,
 	}
-    // Provided KILL_STALE will tell refresh when you would like to remove the out of date version to prepare to launch the new one
-	kill := refresh.KILL_STALE
+    // Provided KILL_STALE will tell refresh when you would like to remove the stale process to prepare to launch the new one
+	kill := refresh.KILL_STALE 
+    // Primary process usually runs your binary
 	run := refresh.Execute{
 		Cmd:        "./bin/myapp",
 		IsBlocking: false, // Should not block because it doesnt finish until Killed by refresh
 		IsPrimary:  true, // This is the main process refersh is rerunning so denoting it as primary
 	}
-
-    // Config to pass into refresh.NewEngineFromConfig()
+    // Create config to pass into refresh.NewEngineFromConfig()
 	config := refresh.Config{
 		RootPath: "./test",
 		// Below is ran when a reload is triggered before killing the stale version
 		Ignore:     ignore,
-		Debounce:   1000,
-		LogLevel:   "debug",
+		Debounce:   1000, // Time in ms to ignore repitive reload triggers usually caused by an OS creating multiple write/rename events for a singular change
+		LogLevel:   "debug", // debug | info | warn | error | mute -> surpresses all logs to the stdOut
         Callback:   RefreshCallback, // func(*refresh.Callback) refresh.EventHandle {}
 		ExecStruct: []refresh.Execute{tidy, build, kill, run},
         // Alternatively for easier config but less control over executes
-        // KILL_STALE and REFRESH are required for the ExecList to function
-        // ExecList: []string{"go mod tidy", "go build -o ./myapp", "KILL_STALE", "REFRESH", "./myapp"}
+        // ExecList: []string{"go mod tidy", "go build -o ./myapp", refresh.KILL_EXEC, refresh.REFRESH_EXEC, "./myapp"}
+        // All calls will be blocking with the exception of the call after REFRESH
+        // Both KILL_EXEC and REFRESH_EXEC are **REQUIRED** for refresh to function properly
+        // refresh.KILL_EXEC denotes when the stale process should be killed
+        // refresh.REFRESH_EXEC denotes the next execute is "primary"
 		Slog:       nil, // Optionally provide a slog interface
                          // if nil a default will be provided
                          // If provided stdout will not be piped through refresh
