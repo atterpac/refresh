@@ -5,16 +5,11 @@
 label = "My Project"
 # Relative to this files location
 root_path = "./test"
-# Runs prior to the exec command starting
-pre_wait = true
-pre_exec = "go build -o main main.go"
-# Command to run on reload
-exec_command = "go run ./main"
-# Runs when a file reload is triggered after killing the previous process
-post_exec = ""
+# Execute list
+exec_list = ["go mod tidy", "go build -o ./app", "KILL_STALE", "REFRESH", "./app"]
 # debug | info | warn | error | mute
 # Defaults to Info if not provided
-log_level = "info" 
+log_level = "debug" 
 # Debounce setting for ignoring reptitive file system notifications
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
@@ -23,7 +18,7 @@ pattern = ["*/ignore*"]
 # Directories to ignore
 dir = ["ignoreme"]
 # Files to ignore
-file = ["ignore.go"]
+file = ["ignore.go", "ignoredFile.go"]
 # File extensions to ignore
-extension = [".db"]
+watched_extension = [".db"]
 

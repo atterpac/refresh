@@ -13,3 +13,4 @@
 "test/dir*/*test.go" "test/dir1/1test.go" true 
 "test/dir*/*test.go" "test/dir1/1test1.go" false
 "test/dir*/*test.go" "test/dir2/2test.go" true
+"*.go" "/home/atterpac/projects/gotato/example/test/main.go" true

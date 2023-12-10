@@ -6,5 +6,6 @@ import (
 
 func FullIgnore() {
 	fmt.Println("This file is ignored")
+
 }
 

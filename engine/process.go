@@ -6,54 +6,41 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
-	"strings"
-
-	"github.com/shirou/gopsutil/process"
 )
 
-// TODO: Pipe stdout from process into the watch engine or the logs
-func (engine *Engine) reloadProcess() *process.Process {
-	// If there is a process already running kill it and run postexec command
-	if engine.isRunning() {
-		ok := killProcess(engine.Process)
-		if !ok {
-			slog.Error("Releasing process: %s")
-			return nil
-		}
-		// Post Exec
-		err := runFromString(engine.Config.PostExec, false)
-		if err != nil {
-			slog.Error(fmt.Sprintf("Running post-exec command: %s", err.Error()))
-			os.Exit(1)
-		}
-		if engine.ProcessLogPipe != nil {
-			slog.Debug("Closing log pipe")
-			engine.ProcessLogPipe.Close()
-			engine.ProcessLogPipe = nil
-		}
+func (engine *Engine) reloadProcess() {
+	if engine.Config.ExecList == nil && engine.Config.ExecStruct == nil {
+		return
 	}
-	// Pre-Process Exec
-	err := runFromString(engine.Config.PreExec, engine.Config.PreWait)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Running pre-exec command: %s", err.Error()))
-		os.Exit(1)
+	if engine.Config.ExecList != nil {
+		engine.reloadFromList()
 	}
-	// Start Exec Process
-	process, err := engine.startProcess()
-	if err != nil {
-		slog.Error(fmt.Sprintf("Starting process: %s", err.Error()))
-		os.Exit(1)
+	if engine.Config.ExecStruct != nil {
+		engine.reloadFromStruct()
 	}
+}
 
-	return process
+func (engine *Engine) reloadFromStruct() {
+	for _, ex := range engine.Config.ExecStruct {
+		err := ex.execute(engine)
+		if err != nil {
+			slog.Error("Running Execute: %s %e", ex.Cmd, err.Error())
+		}
+	}
+}
+
+func (engine *Engine) reloadFromList() {
+	err := engine.execFromList()
+	if err != nil {
+		slog.Error(fmt.Sprintf("Running from exec list: %s", err))
+	}
 }
 
 // Start process with exec command and a root path to call it in
-func (engine *Engine) startProcess() (*process.Process, error) {
+func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 	var err error
-	command := generateExec(engine.Config.ExecCommand)
-	cmd := exec.Command(command[0], command[1:]...)
-	cmd.Dir = engine.Config.RootPath
+	cmdExec := generateExec(runString)
+	cmd := exec.Command(cmdExec[0], cmdExec[1:]...)
 	// If an external slog is provided do not pipe stdout to the engine
 	if !engine.Config.externalSlog {
 		cmd.Stderr = os.Stderr
@@ -62,25 +49,23 @@ func (engine *Engine) startProcess() (*process.Process, error) {
 			slog.Error(fmt.Sprintf("Getting stdout pipe: %s", err.Error()))
 			return nil, err
 		}
-		slog.Debug("Starting log pipe")
-		go printSubProcess(engine.ProcessLogPipe)
 	}
-
 	err = cmd.Start()
+	slog.Debug("Starting log pipe")
+	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
 		fmt.Println(cmd.Err)
 		return nil, err
 	}
-	process, err := process.NewProcess(int32(cmd.Process.Pid))
 	if err != nil {
 		slog.Error(fmt.Sprintf("Getting new process: %s", err.Error()))
 		return nil, err
 	}
-	return process, nil
+	return cmd.Process, nil
 }
 
 // Kill spawned child process
-func killProcess(process *process.Process) bool {
+func killProcess(process *os.Process) bool {
 	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
 	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
 	if runtime.GOOS == "windows" {
@@ -98,34 +83,6 @@ func killProcess(process *process.Process) bool {
 		return false
 	}
 	return true
-}
-
-// Takes a string and runs it as a command by sliceing the string on spaces and passing it to exec
-func runFromString(cmdString string, wait bool) error {
-	if cmdString == "" {
-		return nil
-	}
-	commandSlice := generateExec(cmdString)
-	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	if wait {
-		err = cmd.Wait()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Takes a string and splits it on spaces to create a slice of strings
-func generateExec(cmd string) []string {
-	// String split on spaces
-	return strings.Split(cmd, " ")
 }
 
 // Check if a child process is running

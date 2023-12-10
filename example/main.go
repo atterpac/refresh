@@ -5,26 +5,46 @@ import (
 )
 
 func main() {
-	var empty struct{}
+	background := refresh.Execute {
+		Cmd: "pwd",
+	}
+	tidy := refresh.Execute{
+		Cmd:        "go mod tidy",
+		IsBlocking: true,
+		IsPrimary:  false,
+	}
+	build := refresh.Execute{
+		Cmd:        "go build -o ./bin/myapp",
+		IsBlocking: true,
+		IsPrimary:  false,
+	}
+	kill := refresh.KILL_STALE
+	run := refresh.Execute{
+		Cmd:        "./myapp",
+		ChangeDir: "./bin",
+		IsBlocking: false,
+		IsPrimary:  true,
+	}
 	ignore := refresh.Ignore{
-		File:      map[string]struct{}{"ignore.go": empty},
-		Dir:       map[string]struct{}{"*/ignore*": empty},
-		Extension: map[string]struct{}{".db": empty},
-		IgnoreGit: true,
+		File:         []string{"ignore.go"},
+		Dir:          []string{"*/ignore*"},
+		WatchedExten: []string{"*.go", "*.mod", "*.js"},
+		IgnoreGit:    true,
 	}
 	config := refresh.Config{
-		RootPath:    "./test",
-		PreExec:     "go mod tidy",
-		ExecCommand: "go run main.go",
-		LogLevel:    "debug",
-		Ignore:      ignore,
-		Debounce:    1000,
-		Callback:    RefreshCallback,
-		Slog:        nil,
+		RootPath: "./test",
+		BackgroundStruct: background,
+		// Below is ran when a reload is triggered before killing the stale version
+		Ignore:     ignore,
+		Debounce:   1000,
+		LogLevel:   "debug",
+		ExecStruct: []refresh.Execute{tidy, build, kill, run},
+		Slog:       nil,
 	}
 	watch := refresh.NewEngineFromConfig(config)
 
 	watch.Start()
+
 	<-make(chan struct{})
 }
 

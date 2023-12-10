@@ -19,5 +19,3 @@ var CallbackMap = map[notify.Event]Event{
 	notify.Remove: Remove,
 	notify.Rename: Rename,
 }
-
-
