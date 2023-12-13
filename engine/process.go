@@ -10,14 +10,18 @@ import (
 
 func (engine *Engine) reloadProcess() {
 	if engine.Config.ExecList == nil && engine.Config.ExecStruct == nil {
+		slog.Error("No exec commands found")
 		return
-	}
-	if engine.Config.ExecList != nil {
-		engine.reloadFromList()
 	}
 	if engine.Config.ExecStruct != nil {
 		engine.reloadFromStruct()
+		return
 	}
+	err := engine.execFromList()
+	if err != nil {
+		slog.Error(fmt.Sprintf("Running from exec list: %s", err))
+	}
+
 }
 
 func (engine *Engine) reloadFromStruct() {
@@ -29,16 +33,10 @@ func (engine *Engine) reloadFromStruct() {
 	}
 }
 
-func (engine *Engine) reloadFromList() {
-	err := engine.execFromList()
-	if err != nil {
-		slog.Error(fmt.Sprintf("Running from exec list: %s", err))
-	}
-}
-
 // Start process with exec command and a root path to call it in
 func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 	var err error
+	slog.Debug("Starting Primary")
 	cmdExec := generateExec(runString)
 	cmd := exec.Command(cmdExec[0], cmdExec[1:]...)
 	// If an external slog is provided do not pipe stdout to the engine

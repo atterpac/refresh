@@ -16,7 +16,7 @@ type Config struct {
 	BackgroundExec   string `toml:"background_exec"`
 	BackgroundStruct Execute
 	Ignore           Ignore   `toml:"ignore"`
-	ExecList         []string `toml:"exec_lifecycle"`
+	ExecList         []string `toml:"exec_list"`
 	ExecStruct       []Execute
 	ignoreMap        ignoreMap
 	LogLevel         string `toml:"log_level"`

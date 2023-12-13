@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -32,17 +31,10 @@ func (engine *Engine) Start() {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
 	if engine.Config.BackgroundStruct.Cmd != "" {
-		err := execFromString(engine.Config.BackgroundStruct.Cmd)	
-		if err != nil {
-			slog.Error("Running background process", "Process", engine.Config.BackgroundStruct.Cmd)
-			os.Exit(1)
-		}
+		go backgroundExec(engine.Config.BackgroundStruct.Cmd)	
 	}
-	err := execFromString(engine.Config.BackgroundExec)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Running Background Process: %s", err.Error()))
-		os.Exit(1)
-	}
+	go backgroundExec(engine.Config.BackgroundExec)
+	go engine.reloadProcess()
 	engine.watch()
 }
 

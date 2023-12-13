@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"os"
@@ -103,6 +104,7 @@ func (engine *Engine) execFromList() error {
 		return nil
 	}
 	for _, exe := range engine.Config.ExecList {
+		slog.Debug("is Primary?", fmt.Sprintf("%v", exe), nextPrimary)
 		if nextPrimary {
 			slog.Debug("Reloading Process")
 			engine.Process, err = engine.startPrimary(exe)
@@ -112,7 +114,6 @@ func (engine *Engine) execFromList() error {
 			}
 			slog.Debug("Sucessfull refresh")
 			nextPrimary = false
-			return nil
 		}
 		switch exe {
 		case "":
@@ -145,28 +146,31 @@ func (engine *Engine) execFromList() error {
 			}
 			err = cmd.Wait()
 			if err != nil {
-				slog.Error("Running Execute: %s", exe)
+				slog.Error("Running Execute","command:",  exe)
 			}
 			slog.Debug(fmt.Sprintf("Complete Exec Command: %s", exe))
 		}
-		return nil
 	}
 	return nil
 }
 
-func execFromString(runString string) error {
-	if runString == "" {
-		return nil
-	}
+func backgroundExec(runString string)  {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
+	var out, err bytes.Buffer
+	// Let Process run in background
+	cmd.Stdout = &out
+	cmd.Stderr = &err
+	cmd.Start()
+}
+
+func execFromString(runString string) error {
+	commandSlice := generateExec(runString)
+	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
+	// Let Process run in background
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
-	if err != nil {
-		return err
-	}
-	err = cmd.Wait()
 	if err != nil {
 		return err
 	}

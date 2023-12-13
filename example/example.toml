@@ -6,6 +6,7 @@ label = "My Project"
 # Relative to this files location
 root_path = "./test"
 # Execute list
+background_exec = ["pwd"]
 exec_list = ["go mod tidy", "go build -o ./app", "KILL_STALE", "REFRESH", "./app"]
 # debug | info | warn | error | mute
 # Defaults to Info if not provided
