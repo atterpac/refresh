@@ -26,7 +26,7 @@ var KILL_STALE = Execute{
 var REFRESH_EXEC = "REFRESH"
 var KILL_EXEC = "KILL_STALE"
 
-func (ex *Execute) execute(engine *Engine) error {
+func (ex *Execute) run(engine *Engine) error {
 	var err error
 	var restoreDir string = ""
 	if ex.Cmd == "" {

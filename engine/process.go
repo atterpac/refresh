@@ -26,7 +26,7 @@ func (engine *Engine) reloadProcess() {
 
 func (engine *Engine) reloadFromStruct() {
 	for _, ex := range engine.Config.ExecStruct {
-		err := ex.execute(engine)
+		err := ex.run(engine)
 		if err != nil {
 			slog.Error("Running Execute: %s %e", ex.Cmd, err.Error())
 		}
