@@ -10,10 +10,10 @@ import (
 )
 
 type Execute struct {
-	Cmd        string      `toml:"cmd"`      // Execute command
-	ChangeDir  string      `toml:"dir"` // If directory needs to be changed to call this command relative to the root path
-	IsBlocking bool        `toml:"blocking"` // Should the following executes wait for this one to complete
-	IsPrimary  bool        `toml:"primary"`  // Only one primary command can be run at a time
+	Cmd        string      `toml:"cmd" yaml:"cmd"`      // Execute command
+	ChangeDir  string      `toml:"dir" yaml:"dir"` // If directory needs to be changed to call this command relative to the root path
+	IsBlocking bool        `toml:"blocking" yaml:"blocking"` // Should the following executes wait for this one to complete
+	IsPrimary  bool        `toml:"primary" yaml:"primary"`  // Only one primary command can be run at a time
 	process    *os.Process // Stores the Exec.Start() process
 }
 

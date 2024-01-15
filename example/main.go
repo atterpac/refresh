@@ -31,7 +31,7 @@ func main() {
 		WatchedExten: []string{"*.go", "*.mod", "*.js"},
 		IgnoreGit:    true,
 	}
-	config := refresh.Config{
+	_ = refresh.Config{
 		RootPath: "./test",
 		BackgroundStruct: background,
 		// Below is ran when a reload is triggered before killing the stale version
@@ -41,7 +41,9 @@ func main() {
 		ExecStruct: []refresh.Execute{tidy, build, kill, run},
 		Slog:       nil,
 	}
-	watch := refresh.NewEngineFromConfig(config)
+
+	// watch := refresh.NewEngineFromConfig(config)
+	watch := refresh.NewEngineFromYAML("./example.yaml")
 
 	watch.Start()
 

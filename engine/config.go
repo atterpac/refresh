@@ -9,19 +9,20 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	RootPath         string    `toml:"root_path"`
-	BackgroundStruct Execute   `toml:"background"`
-	Ignore           Ignore    `toml:"ignore"`
-	ExecStruct       []Execute `toml:"executes"`
-	ExecList         []string  `toml:"exec_list"`
-	ignoreMap        ignoreMap
-	LogLevel         string `toml:"log_level"`
-	Debounce         int    `toml:"debounce"`
+	RootPath         string    `toml:"root_path" yaml:"root_path"`
+	BackgroundStruct Execute   `toml:"background" yaml:"background"`
+	Ignore           Ignore    `toml:"ignore" yaml:"ignore"`
+	ExecStruct       []Execute `toml:"executes" yaml:"executes"`
+	ExecList         []string  `toml:"exec_list" yaml:"exec_list"`
+	LogLevel         string    `toml:"log_level" yaml:"log_level"`
+	Debounce         int       `toml:"debounce" yaml:"debounce"`
 	Callback         func(*EventCallback) EventHandle
 	Slog             *slog.Logger
+	ignoreMap        ignoreMap
 	externalSlog     bool
 }
 
@@ -34,6 +35,23 @@ func (engine *Engine) readConfigFile(path string) *Engine {
 	}
 	return engine
 }
+
+func (engine *Engine) readConfigYaml(path string) *Engine {
+	file, err := os.ReadFile(path)
+	if err != nil {
+		slog.Error("Error reading config file")
+		slog.Error(err.Error())
+		os.Exit(1)	
+	}
+	err = yaml.Unmarshal(file, &engine)
+	if err != nil {
+		slog.Error("Error reading config file")
+		slog.Error(err.Error())
+		os.Exit(1)
+	}
+	return engine
+}
+	
 
 // Verify required data is present in config
 func (engine *Engine) verifyConfig() {

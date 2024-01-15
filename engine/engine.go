@@ -13,7 +13,7 @@ type Engine struct {
 	Process        *os.Process
 	Chan           chan notify.EventInfo
 	Active         bool
-	Config         Config `toml:"config"`
+	Config         Config `toml:"config" yaml:"config"`
 	ProcessLogFile *os.File
 	ProcessLogPipe io.ReadCloser
 }
@@ -73,6 +73,15 @@ func NewEngineFromConfig(options Config) *Engine {
 func NewEngineFromTOML(confPath string) *Engine {
 	engine := Engine{}
 	engine.readConfigFile(confPath)
+	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
+	engine.Config.externalSlog = false
+	engine.verifyConfig()
+	return &engine
+}
+
+func NewEngineFromYAML(confPath string) *Engine {
+	engine := Engine{}
+	engine.readConfigYaml(confPath)
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	engine.Config.externalSlog = false
 	engine.verifyConfig()

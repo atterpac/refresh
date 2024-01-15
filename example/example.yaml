@@ -1,0 +1,30 @@
+config:
+  label: My Project
+  root_path: ./test
+  log_level: info
+  debounce: 1000
+  ignore:
+    dir:
+      - ignoreme
+    file:
+      - '*ignore.go'
+      - ignoredFile.go
+    watched_extension:
+      - '*.go'
+  background:
+    cmd: pwd
+  executes:
+    - cmd: go mod tidy
+      blocking: true
+      primary: false
+    - cmd: go build -o ./bin/app
+      blocking: true
+      primary: false
+    - cmd: KILL_STALE
+      blocking: true
+      primary: false
+    - cmd: ./app
+      dir: ./bin
+      blocking: true
+      primary: true
+

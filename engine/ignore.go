@@ -7,10 +7,10 @@ import (
 )
 
 type Ignore struct {
-	Dir          []string `toml:"dir"`
-	File         []string `toml:"file"`
-	WatchedExten []string `toml:"watched_extension"`
-	IgnoreGit    bool     `toml:"git"`
+	Dir          []string `toml:"dir" yaml:"dir"`
+	File         []string `toml:"file" yaml:"file"`
+	WatchedExten []string `toml:"watched_extension" yaml:"watched_extension"`
+	IgnoreGit    bool     `toml:"git" yaml:"git"`
 }
 
 type ignoreMap struct {

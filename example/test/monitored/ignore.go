@@ -8,6 +8,5 @@ import (
 // Changes to this file will be recognized in the debug logs but will not trigger a reload
 func ignored() {
 	fmt.Println("This file is ignored and not changed")
-
 }
 

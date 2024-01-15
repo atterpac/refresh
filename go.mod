@@ -8,4 +8,7 @@ require (
 	github.com/rjeczalik/notify v0.9.3
 )
 
-require golang.org/x/sys v0.14.0 // indirect
+require (
+	golang.org/x/sys v0.14.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
+)
