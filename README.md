@@ -21,32 +21,6 @@ go get github.com/atterpac/refresh
 ```
 ## Usage
 
-#### Flags
-`-p` Root path that will be watched and commands will be executed in typically this is './'
-
-`-w` Flag to decide wether the exec process should wait on the pre exec to complete
-
-`-e` Commands to be called when a modification is detected in the form of a comma seperated list required refresh declrations 
-    
-**See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle) for more details**
-
-`-l` Log Level to display options can include `"debug", "info","warn","error", "mute"`
-
-`-f` path to a TOML config file see [Config File](https://github.com/atterpac/refresh#config-file) for details on the format of config
-
-`-id` Ignore directories provided as a comma-separated list
-
-`-if` Ignore files provided as a comma-separated list
-
-`-ie` Ignore extensions provided as a comma-separated list
-
-`-d` Debounce timer in milliseconds, used to ignore repetitive system
-
-#### Example
-```bash
-refresh -p ./ -e "go mod tidy, go build -o ./myapp, KILL_STALE, REFRESH, ./myapp" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
-```
-
 #### Execute Lifecycle
 In order to provide flexibility in your execute calls and project reloads refresh provides two declarations that are required in your execute list 
 
@@ -321,6 +295,33 @@ cmd="./app"
 primary=true
 ```
 
+#### Flags
+This method is possible but not the most verbose and controlled way to use refresh
+
+`-p` Root path that will be watched and commands will be executed in typically this is './'
+
+`-w` Flag to decide wether the exec process should wait on the pre exec to complete
+
+`-e` Commands to be called when a modification is detected in the form of a comma seperated list required refresh declrations 
+    
+**See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle) for more details**
+
+`-l` Log Level to display options can include `"debug", "info","warn","error", "mute"`
+
+`-f` path to a TOML config file see [Config File](https://github.com/atterpac/refresh#config-file) for details on the format of config
+
+`-id` Ignore directories provided as a comma-separated list
+
+`-if` Ignore files provided as a comma-separated list
+
+`-ie` Ignore extensions provided as a comma-separated list
+
+`-d` Debounce timer in milliseconds, used to ignore repetitive system
+
+#### Example
+```bash
+refresh -p ./ -e "go mod tidy, go build -o ./myapp, KILL_STALE, REFRESH, ./myapp" -l "debug" -id ".git, node_modules" -if ".env" -ie ".db, .sqlite" -d 500
+```
 ### Alternatives
 Refresh not for you? Here are some popular hot reload alternatives
 
