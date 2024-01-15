@@ -50,6 +50,11 @@ func (engine *Engine) Stop() {
 	notify.Stop(engine.Chan)
 }
 
+func (engine *Engine) SetLogger(logger *slog.Logger) {
+	engine.Config.Slog = logger
+	engine.Config.externalSlog = true
+}
+
 // This is out of date
 func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore Ignore, debounce int, chunkSize string) *Engine {
 	engine := &Engine{}
