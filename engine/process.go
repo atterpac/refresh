@@ -9,19 +9,11 @@ import (
 )
 
 func (engine *Engine) reloadProcess() {
-	if engine.Config.ExecList == nil && engine.Config.ExecStruct == nil {
+	if len(engine.Config.ExecStruct) == 0 {
 		slog.Error("No exec commands found")
 		return
 	}
-	if engine.Config.ExecStruct != nil {
-		engine.reloadFromStruct()
-		return
-	}
-	err := engine.execFromList()
-	if err != nil {
-		slog.Error(fmt.Sprintf("Running from exec list: %s", err))
-	}
-
+	engine.reloadFromStruct()
 }
 
 func (engine *Engine) reloadFromStruct() {
@@ -39,7 +31,7 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 	slog.Debug("Starting Primary")
 	cmdExec := generateExec(runString)
 	cmd := exec.Command(cmdExec[0], cmdExec[1:]...)
-	// If an external slog is provided do not pipe stdout to the engine
+	//If an external slog is provided do not pipe stdout to the engine
 	if !engine.Config.externalSlog {
 		cmd.Stderr = os.Stderr
 		engine.ProcessLogPipe, err = cmd.StdoutPipe()
@@ -49,12 +41,12 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 		}
 	}
 	err = cmd.Start()
-	slog.Debug("Starting log pipe")
-	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
 		fmt.Println(cmd.Err)
 		return nil, err
 	}
+	slog.Debug("Starting log pipe")
+	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Getting new process: %s", err.Error()))
 		return nil, err
@@ -64,6 +56,7 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 
 // Kill spawned child process
 func killProcess(process *os.Process) bool {
+	slog.Info("Killing process", "pid", process.Pid)
 	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
 	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
 	if runtime.GOOS == "windows" {

@@ -19,21 +19,14 @@ type Engine struct {
 }
 
 func (engine *Engine) Start() {
-	if engine.Config.Slog == nil {
-		engine.Config.Slog = newLogger(engine.Config.LogLevel)
-		engine.Config.externalSlog = false
-	} else {
-		engine.Config.externalSlog = true
-	}
+	engine.Config.Slog = newLogger(engine.Config.LogLevel)
+	engine.Config.externalSlog = false
 	slog.SetDefault(engine.Config.Slog)
 	slog.Info("Refresh Start")
 	if engine.Config.Ignore.IgnoreGit {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
-	if engine.Config.BackgroundStruct.Cmd != "" {
-		go backgroundExec(engine.Config.BackgroundStruct.Cmd)	
-	}
-	go backgroundExec(engine.Config.BackgroundExec)
+	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
 	go engine.reloadProcess()
 	engine.watch()
 }
@@ -81,6 +74,7 @@ func NewEngineFromTOML(confPath string) *Engine {
 	engine := Engine{}
 	engine.readConfigFile(confPath)
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
+	engine.Config.externalSlog = false
 	engine.verifyConfig()
 	return &engine
 }

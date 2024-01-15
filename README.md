@@ -269,30 +269,56 @@ func ExampleCallback(e refresh.EventCallback) refresh.EventHandle {
 
 If you would prefer to load from a [config](https://github.com/Atterpac/refresh#config-file) file rather than building the structs you can use 
 ```go
-refresh.NewEngineFromTOML("path/to/toml")
+engine.NewEngineFromTOML("path/to/toml")
+engine.SetLogger(//Input slog.Logger)
 ```
 #### Example Config
 ```toml
 [config]
 # Relative to this files location
 root_path = "./"
-# ordered list of execs to run including the required KILL_STALE, and REFERSH
-exec_list = ["go mod tidy", "go build -o ./app", "KILL_STALE", "REFRESH", "./app"
-# debug | info | warn | error | mute
-# Defaults to Info if not provided
+# debug | info(default) | warn | error | mute
 log_level = "info" 
 # Debounce setting for ignoring reptitive file system notifications
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
 [config.ignore]
+# Ignore follows normal pattern matching including /**/
 # Directories to ignore
 dir = [".git", "node_modules", "newdir"]
 # Files to ignore
-file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go"]
+file = [".DS_Store", ".gitignore", ".gitkeep", "newfile.go", "*ignoreme*"]
 # File extensions to watch
-watched_extensions = [".db", ".sqlite"]
+watched_extensions = ["*.go"]
 # Add .gitignore paths to ignore
 git_ignore = true
+
+# Runs process in the background and doesnt restart when a refresh is triggered
+[config.background]
+cmd="vite dev"
+
+# Execute structs
+# dir is used to change the working directory to execute into
+# cmd is the command to be executed
+# primary denotes this is the process refresh should be tracking to kill on reload
+# blocking denotes wether the next execute should wait for it to complete ie; build the application and when its done run it
+# KILL_STALE is required to be ran at any point before the primary is executed this kills the previous version of the application
+[[config.executes]]
+cmd="go mod tidy"
+primary=false
+blocking=true
+
+[[config.executes]]
+cmd="go build -o ./bin/app"
+blocking=true
+
+[[config.executes]]
+cmd="KILL_STALE"
+
+[[config.executes]]
+dir="./bin"
+cmd="./app"
+primary=true
 ```
 
 ### Alternatives

@@ -6,20 +6,51 @@ label = "My Project"
 # Relative to this files location
 root_path = "./test"
 # Execute list
-background_exec = ["pwd"]
-exec_list = ["go mod tidy", "go build -o ./app", "KILL_STALE", "REFRESH", "./app"]
-# debug | info | warn | error | mute
-# Defaults to Info if not provided
+background_exec = "pwd"
+# debug | info(default) | warn | error | mute
 log_level = "debug" 
 # Debounce setting for ignoring reptitive file system notifications
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
 [config.ignore]
-pattern = ["*/ignore*"]
 # Directories to ignore
 dir = ["ignoreme"]
 # Files to ignore
-file = ["ignore.go", "ignoredFile.go"]
+file = ["*ignore.go", "ignoredFile.go"]
 # File extensions to ignore
-watched_extension = [".db"]
+watched_extension = ["*.go"]
+
+# Background commands are run in the background and are not affected by any file changes
+[config.background]
+cmd="pwd"
+
+# Executes are run in order
+# cmd is the command to run
+# blocking will block the next command from running until it is complete
+# primary will be the command that is run persist and run when a file change is detected
+# KILL_STALE will kill the stale processe that is and must be PRIOR to the primary running
+# change_dir will change the directory to the root_path prior to the command
+[[config.executes]]
+dir="./ignoreme"
+cmd="pwd"
+
+[[config.executes]]
+cmd="go mod tidy"
+blocking=true
+primary=false
+
+[[config.executes]]
+cmd="go build -o ./app"
+blocking=true
+primary=false
+
+[[config.executes]]
+cmd="KILL_STALE"
+blocking=true
+primary=false
+
+[[config.executes]]
+cmd="./app"
+blocking=true
+primary=true
 

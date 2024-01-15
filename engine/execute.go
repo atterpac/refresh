@@ -10,10 +10,10 @@ import (
 )
 
 type Execute struct {
-	Cmd        string      // Execute command
-	ChangeDir  string      // If directory needs to be changed to call this command relative to the root path
-	IsBlocking bool        // Should the following executes wait for this one to complete
-	IsPrimary  bool        // Only one primary command can be run at a time
+	Cmd        string      `toml:"cmd"`      // Execute command
+	ChangeDir  string      `toml:"dir"` // If directory needs to be changed to call this command relative to the root path
+	IsBlocking bool        `toml:"blocking"` // Should the following executes wait for this one to complete
+	IsPrimary  bool        `toml:"primary"`  // Only one primary command can be run at a time
 	process    *os.Process // Stores the Exec.Start() process
 }
 
@@ -25,6 +25,7 @@ var KILL_STALE = Execute{
 
 var REFRESH_EXEC = "REFRESH"
 var KILL_EXEC = "KILL_STALE"
+var firstRun = true
 
 func (ex *Execute) run(engine *Engine) error {
 	var err error
@@ -43,11 +44,11 @@ func (ex *Execute) run(engine *Engine) error {
 	if ex.IsPrimary {
 		slog.Debug("Reloading Process")
 		engine.Process, err = engine.startPrimary(ex.Cmd)
+		slog.Info("Primary Process Started", "pid", engine.Process.Pid)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Starting Run command: %s", err.Error()))
 			os.Exit(1)
 		}
-		slog.Debug("Sucessfull refresh")
 		if restoreDir != "" {
 			slog.Info("Restoring working Dir")
 			changeWorkingDirectory(restoreDir)
@@ -58,7 +59,10 @@ func (ex *Execute) run(engine *Engine) error {
 	case "":
 		return nil
 	case "KILL_STALE":
-		slog.Debug("No process found to kill")
+		if firstRun {
+			firstRun = false
+			return nil
+		}
 		if engine.isRunning() {
 			slog.Debug("Killing Stale Version")
 			ok := killProcess(engine.Process)
@@ -72,23 +76,10 @@ func (ex *Execute) run(engine *Engine) error {
 			}
 		}
 	default:
-		slog.Debug(fmt.Sprintf("Running Exec Command: %s", ex.Cmd))
-		commandSlice := generateExec(ex.Cmd)
-		cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Start()
+		err := execFromString(ex.Cmd, ex.IsBlocking)
 		if err != nil {
-			return err
+			slog.Error("Running Execute", "command:", ex.Cmd)
 		}
-		ex.process = cmd.Process
-		if ex.IsBlocking {
-			err = cmd.Wait()
-			if err != nil {
-				return err
-			}
-		}
-		slog.Debug(fmt.Sprintf("Complete Exec Command: %s", ex.Cmd))
 	}
 	if restoreDir != "" {
 		slog.Info("Restoring working Dir")
@@ -97,64 +88,7 @@ func (ex *Execute) run(engine *Engine) error {
 	return nil
 }
 
-func (engine *Engine) execFromList() error {
-	var nextPrimary bool
-	var err error
-	if engine.Config.ExecList == nil {
-		return nil
-	}
-	for _, exe := range engine.Config.ExecList {
-		slog.Debug("is Primary?", fmt.Sprintf("%v", exe), nextPrimary)
-		if nextPrimary {
-			slog.Debug("Reloading Process")
-			engine.Process, err = engine.startPrimary(exe)
-			if err != nil {
-				slog.Error(fmt.Sprintf("Starting Run command: %s", err.Error()))
-				os.Exit(1)
-			}
-			slog.Debug("Sucessfull refresh")
-			nextPrimary = false
-		}
-		switch exe {
-		case "":
-			return nil
-		case "REFRESH":
-			nextPrimary = true
-		case "KILL_STALE":
-			slog.Debug("No process found to kill")
-			if engine.isRunning() {
-				slog.Debug("Killing Stale Version")
-				ok := killProcess(engine.Process)
-				if !ok {
-					slog.Error("Releasing stale process")
-				}
-				if engine.ProcessLogPipe != nil {
-					slog.Debug("Closing log pipe")
-					engine.ProcessLogPipe.Close()
-					engine.ProcessLogPipe = nil
-				}
-			}
-		default:
-			slog.Debug(fmt.Sprintf("Running Exec Command: %s", exe))
-			commandSlice := generateExec(exe)
-			cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			err = cmd.Start()
-			if err != nil {
-				return err
-			}
-			err = cmd.Wait()
-			if err != nil {
-				slog.Error("Running Execute","command:",  exe)
-			}
-			slog.Debug(fmt.Sprintf("Complete Exec Command: %s", exe))
-		}
-	}
-	return nil
-}
-
-func backgroundExec(runString string)  {
+func backgroundExec(runString string) {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	var out, err bytes.Buffer
@@ -162,17 +96,22 @@ func backgroundExec(runString string)  {
 	cmd.Stdout = &out
 	cmd.Stderr = &err
 	cmd.Start()
+	slog.Debug(fmt.Sprintf("Complete Exec Command: %s", runString))
 }
 
-func execFromString(runString string) error {
+func execFromString(runString string, block bool) error {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	// Let Process run in background
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	err := cmd.Start()
-	if err != nil {
-		return err
+	if block {
+		err = cmd.Wait()
+		if err != nil {
+			slog.Error("Running Execute", "command:", runString)
+			return err
+		}
 	}
 	return nil
 }

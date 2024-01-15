@@ -12,14 +12,13 @@ import (
 
 func (engine *Engine) watch() {
 	slog.Info("Watching for file changes...")
-	engine.reloadProcess()
 	// Create Channel for Events
 	engine.Chan = make(chan notify.EventInfo, 1)
+	defer notify.Stop(engine.Chan)
 	// Mount watcher on route directory and subdirectories
 	if err := notify.Watch("./...", engine.Chan, notify.All); err != nil {
 		slog.Error(fmt.Sprintf("Creating watcher: %s", err.Error()))
 	}
-	defer notify.Stop(engine.Chan)
 	watchEvents(engine, engine.Chan)
 }
 
@@ -52,12 +51,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) {
 			}
 		}
 		if eventInfo.Reload {
-			if !checkExtension(ei.Path(), engine.Config.ignoreMap.extension) {
-				slog.Debug(fmt.Sprintf("Ignoring Exentension %s change: %s", ei.Event().String(), ei.Path()))
-				continue
-			}
-			// Check if file should be ignored
-			if engine.Config.ignoreMap.checkIgnore(ei.Path()) {
+			if engine.Config.Ignore.shouldIgnore(ei.Path()) {
 				slog.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String(), ei.Path()))
 				continue
 			}

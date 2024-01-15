@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	for i := 0; i < 100; i++ {
-		fmt.Println("changed me", i)
+	for i := 0; i < 30; i++ {
+		fmt.Println("change me", i)
 		time.Sleep(1 * time.Second)
 	}
 }

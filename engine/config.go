@@ -12,12 +12,11 @@ import (
 )
 
 type Config struct {
-	RootPath         string `toml:"root_path"`
-	BackgroundExec   string `toml:"background_exec"`
-	BackgroundStruct Execute
-	Ignore           Ignore   `toml:"ignore"`
-	ExecList         []string `toml:"exec_list"`
-	ExecStruct       []Execute
+	RootPath         string    `toml:"root_path"`
+	BackgroundStruct Execute   `toml:"background"`
+	Ignore           Ignore    `toml:"ignore"`
+	ExecStruct       []Execute `toml:"executes"`
+	ExecList         []string  `toml:"exec_list"`
 	ignoreMap        ignoreMap
 	LogLevel         string `toml:"log_level"`
 	Debounce         int    `toml:"debounce"`
@@ -47,6 +46,7 @@ func (engine *Engine) verifyConfig() {
 	slog.Debug("Config Verified")
 	// Change directory executes are called in to match root directory
 	cleaned := cleanDirectory(engine.Config.RootPath)
+	slog.Info("Changing Working Directory", "dir", cleaned)
 	changeWorkingDirectory(cleaned)
 }
 
