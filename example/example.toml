@@ -5,8 +5,6 @@
 label = "My Project"
 # Relative to this files location
 root_path = "./test"
-# Execute list
-background_exec = "pwd"
 # debug | info(default) | warn | error | mute
 log_level = "debug" 
 # Debounce setting for ignoring reptitive file system notifications
