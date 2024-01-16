@@ -1,17 +1,18 @@
 package engine
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"os"
 	"os/signal"
-	"runtime"
+	"time"
 
 	"github.com/rjeczalik/notify"
 )
 
 type Engine struct {
-	Process        *os.Process
+	ProcessTree    Process
 	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config" yaml:"config"`
@@ -19,7 +20,7 @@ type Engine struct {
 	ProcessLogPipe io.ReadCloser
 }
 
-func (engine *Engine) Start() {
+func (engine *Engine) Start() error {
 	engine.Config.Slog = newLogger(engine.Config.LogLevel)
 	engine.Config.externalSlog = false
 	slog.SetDefault(engine.Config.Slog)
@@ -28,32 +29,30 @@ func (engine *Engine) Start() {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
 	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
+	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
+	time.Sleep(waitTime)
 	go engine.reloadProcess()
-	go engine.SigTrap()
-	engine.watch()
+	trapChan := make(chan error)
+	go engine.SigTrap(trapChan)
+	go engine.watch()
+	return <-trapChan
 }
 
-func (engine *Engine) SigTrap() {
+func (engine *Engine) SigTrap(ch chan error) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 	go func() {
-		<-signalChan
-		slog.Warn("Graceful Exit")
+		sig := <-signalChan
+		slog.Warn("Graceful Exit Requested", "signal", sig)
 		engine.Stop()
-		os.Exit(0)
+		ch <- errors.New("Graceful Exit Requested")
 	}()
 }
 
 func (engine *Engine) Stop() {
-	if runtime.GOOS == "windows" {
-		err := killWindows(int(engine.Process.Pid))
-		if err != nil {
-			slog.Error("Could not kill windows process")
-		}
-	} else {
-		killProcess(engine.Process)
-	}
+	engine.killProcess(engine.ProcessTree)
 	notify.Stop(engine.Chan)
+	os.Exit(0)
 }
 
 func (engine *Engine) SetLogger(logger *slog.Logger) {

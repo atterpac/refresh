@@ -5,9 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"runtime"
-	"syscall"
-	"time"
 )
 
 func (engine *Engine) reloadProcess() {
@@ -42,12 +39,12 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 			return nil, err
 		}
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
 		return nil, err
 	}
+	engine.setPGID(cmd)
 	slog.Debug("Starting log pipe")
 	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
@@ -57,46 +54,13 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 	return cmd.Process, nil
 }
 
-// Kill spawned child process
-func killProcess(process *os.Process) bool {
-	slog.Info("Killing process", "pid", process.Pid)
-	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
-	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
-	pgid, err := syscall.Getpgid(process.Pid)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Getting process group id: %s", err.Error()))
-		return false
-	}
-	if runtime.GOOS == "windows" {
-		err := killWindows(int(process.Pid))
-		if err != nil {
-			slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
-			return false
-		}
-		return true
-	}
-	// Kill process on other OS's
-	err = syscall.Kill(-pgid, syscall.SIGKILL)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
-		return false
-	}
-	time.Sleep(250 * time.Millisecond)
-	return true
-}
-
 // Check if a child process is running
 func (engine *Engine) isRunning() bool {
-	if engine.Process == nil {
+	if engine.ProcessTree.Process == nil {
 		return false
 	}
-	_, err := os.FindProcess(int(engine.Process.Pid))
+	_, err := os.FindProcess(int(engine.ProcessTree.Process.Pid))
 	return err == nil
 }
 
-// Window specific kill process
-func killWindows(pid int) error {
-	// F = force kill | T = kill child processes in case users program spawned its own processes | PID = process id
-	err := exec.Command("taskkill", "/F", "/T", "/PID", fmt.Sprintf("%d", pid)).Run()
-	return err
-}
+

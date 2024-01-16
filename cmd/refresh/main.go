@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	var version string = "0.4.0"
+	var version string = "0.4.3"
 
 	var rootPath string
 	var execCommand string
@@ -69,7 +69,10 @@ func main() {
 		watch = refresh.NewEngineFromConfig(config)
 	}
 
-	watch.Start()
+	err := watch.Start()
+	if err != nil {
+		os.Exit(1)
+	}
 	<-make(chan struct{})
 }
 

@@ -22,7 +22,7 @@ func (engine *Engine) watch() {
 	watchEvents(engine, engine.Chan)
 }
 
-func watchEvents(engine *Engine, e chan notify.EventInfo) {
+func watchEvents(engine *Engine, e chan notify.EventInfo) error {
 	var debounceTime time.Time
 	var debounceThreshold = time.Duration(engine.Config.Debounce) * time.Millisecond
 	for {
