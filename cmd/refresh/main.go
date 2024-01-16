@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	var version string = "0.4.25"
+	var version string = "0.4.26"
 
 	var rootPath string
 	var execCommand string
