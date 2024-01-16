@@ -39,7 +39,7 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 			return nil, err
 		}
 	}
-	setPGID(cmd)
+	engine.setPGID(cmd)
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
@@ -56,10 +56,10 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 
 // Check if a child process is running
 func (engine *Engine) isRunning() bool {
-	if engine.Process == nil {
+	if engine.Process.Process == nil {
 		return false
 	}
-	_, err := os.FindProcess(int(engine.Process.Pid))
+	_, err := os.FindProcess(int(engine.Process.Process.Pid))
 	return err == nil
 }
 

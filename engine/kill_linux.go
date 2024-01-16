@@ -11,12 +11,17 @@ import (
 	"time"
 )
 
+type Process struct {
+	Process *os.Process
+}
+
 // Kill spawned child process
-func killProcess(process *os.Process) bool {
-	slog.Info("Killing process", "pid", process.Pid)
+func (engine *Engine) killProcess(process Process) bool {
+	osProcess := process.Process
+	slog.Info("Killing process", "pid", osProcess.Pid)
 	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
 	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
-	pgid, err := syscall.Getpgid(process.Pid)
+	pgid, err := syscall.Getpgid(osProcess.Pid)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Getting process group id: %s", err.Error()))
 		return false
@@ -30,6 +35,6 @@ func killProcess(process *os.Process) bool {
 	return true
 }
 
-func setPGID(cmd *exec.Cmd) {
+func (engine *Engine) setPGID(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }

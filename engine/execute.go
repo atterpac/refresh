@@ -43,8 +43,8 @@ func (ex *Execute) run(engine *Engine) error {
 	}
 	if ex.IsPrimary {
 		slog.Debug("Reloading Process")
-		engine.Process, err = engine.startPrimary(ex.Cmd)
-		slog.Info("Primary Process Started", "pid", engine.Process.Pid)
+		engine.Process.Process, err = engine.startPrimary(ex.Cmd)
+		slog.Info("Primary Process Started", "pid", engine.Process.Process.Pid)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Starting Run command: %s", err.Error()))
 			os.Exit(1)
@@ -65,7 +65,7 @@ func (ex *Execute) run(engine *Engine) error {
 		}
 		if engine.isRunning() {
 			slog.Debug("Killing Stale Version")
-			ok := killProcess(engine.Process)
+			ok := engine.killProcess(engine.Process)
 			if !ok {
 				slog.Error("Releasing stale process")
 			}

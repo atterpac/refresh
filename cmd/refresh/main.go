@@ -69,7 +69,10 @@ func main() {
 		watch = refresh.NewEngineFromConfig(config)
 	}
 
-	watch.Start()
+	err := watch.Start()
+	if err != nil {
+		os.Exit(1)
+	}
 	<-make(chan struct{})
 }
 

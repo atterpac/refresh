@@ -10,7 +10,7 @@ import (
 )
 
 type Engine struct {
-	Process        *os.Process
+	Process        Process
 	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config" yaml:"config"`
@@ -18,7 +18,7 @@ type Engine struct {
 	ProcessLogPipe io.ReadCloser
 }
 
-func (engine *Engine) Start() {
+func (engine *Engine) Start() error {
 	engine.Config.Slog = newLogger(engine.Config.LogLevel)
 	engine.Config.externalSlog = false
 	slog.SetDefault(engine.Config.Slog)
@@ -28,23 +28,32 @@ func (engine *Engine) Start() {
 	}
 	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
 	go engine.reloadProcess()
-	go engine.SigTrap()
-	engine.watch()
+	if err := engine.SigTrap(); err != nil {
+		return err
+	}
+	go engine.watch()
+	return nil
 }
 
-func (engine *Engine) SigTrap() {
+func (engine *Engine) SigTrap() error {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
+	exitChan := make(chan error)
+	defer close(exitChan)
 	go func() {
-		<-signalChan
-		slog.Warn("Graceful Exit")
-		engine.Stop()
-		os.Exit(0)
+		select {
+		case sig := <-signalChan:
+			slog.Warn("Graceful Exit Requested", "signal", sig)
+			engine.Stop()
+		case <-exitChan:
+			return
+		}
 	}()
+	return <-exitChan
 }
 
 func (engine *Engine) Stop() {
-	killProcess(engine.Process)
+	engine.killProcess(engine.Process)
 	notify.Stop(engine.Chan)
 	os.Exit(0)
 }

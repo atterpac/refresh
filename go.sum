@@ -1,5 +1,7 @@
 github.com/BurntSushi/toml v1.3.2 h1:o7IhLm0Msx3BaB+n3Ag7L8EVlByGnpq14C4YWiu/gL8=
 github.com/BurntSushi/toml v1.3.2/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
+github.com/alexbrainman/ps v0.0.0-20171229230509-b3e1b4a15894 h1:A6LgNoQeWttVPnIRYzKsbex/HePFxYT9ygCZvgVJDU0=
+github.com/alexbrainman/ps v0.0.0-20171229230509-b3e1b4a15894/go.mod h1:Wgrp3f69GNEJz6CdHKtBqKAWdmYTd1K9IlOV+uuv4Uw=
 github.com/lmittmann/tint v1.0.3 h1:W5PHeA2D8bBJVvabNfQD/XW9HPLZK1XoPZH0cq8NouQ=
 github.com/lmittmann/tint v1.0.3/go.mod h1:HIS3gSy7qNwGCj+5oRjAutErFBl4BzdQP6cJZ0NfMwE=
 github.com/rjeczalik/notify v0.9.3 h1:6rJAzHTGKXGj76sbRgDiDcYj/HniypXmSJo1SWakZeY=
