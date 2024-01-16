@@ -27,4 +27,3 @@ config:
       dir: ./bin
       blocking: true
       primary: true
-
