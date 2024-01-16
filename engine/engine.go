@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"runtime"
 
 	"github.com/rjeczalik/notify"
 )
@@ -45,14 +44,7 @@ func (engine *Engine) SigTrap() {
 }
 
 func (engine *Engine) Stop() {
-	if runtime.GOOS == "windows" {
-		err := killWindows(int(engine.Process.Pid))
-		if err != nil {
-			slog.Error("Could not kill windows process")
-		}
-	} else {
-		killProcess(engine.Process)
-	}
+	killProcess(engine.Process)
 	notify.Stop(engine.Chan)
 }
 
