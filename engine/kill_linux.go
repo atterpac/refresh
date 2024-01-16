@@ -1,10 +1,12 @@
 //go:build linux
+
 package engine
 
 import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/exec"
 	"syscall"
 	"time"
 )
@@ -26,4 +28,8 @@ func killProcess(process *os.Process) bool {
 	}
 	time.Sleep(250 * time.Millisecond)
 	return true
+}
+
+func setPGID(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }

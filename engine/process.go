@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"runtime"
-	"syscall"
 )
 
 func (engine *Engine) reloadProcess() {
@@ -41,9 +39,7 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 			return nil, err
 		}
 	}
-	if runtime.GOOS != "windows" {
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-	}
+	setPGID(cmd)
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)

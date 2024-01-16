@@ -27,3 +27,7 @@ func killProcess(process *os.Process) bool {
 	time.Sleep(250 * time.Millisecond)
 	return true
 }
+
+func setPGID(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+}
