@@ -42,7 +42,9 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 			return nil, err
 		}
 	}
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if runtime.GOOS != "windows" {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	}
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
@@ -62,11 +64,6 @@ func killProcess(process *os.Process) bool {
 	slog.Info("Killing process", "pid", process.Pid)
 	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
 	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
-	pgid, err := syscall.Getpgid(process.Pid)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Getting process group id: %s", err.Error()))
-		return false
-	}
 	if runtime.GOOS == "windows" {
 		err := killWindows(int(process.Pid))
 		if err != nil {
@@ -75,6 +72,11 @@ func killProcess(process *os.Process) bool {
 		}
 		return true
 	} else {
+		pgid, err := syscall.Getpgid(process.Pid)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Getting process group id: %s", err.Error()))
+			return false
+		}
 		err = syscall.Kill(-pgid, syscall.SIGTERM)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
