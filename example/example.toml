@@ -24,7 +24,7 @@ cmd="pwd"
 # Executes are run in order
 # cmd is the command to run
 # blocking will block the next command from running until it is complete
-# primary will be the command that is run persist and run when a file change is detected
+# primary will be the command that will persist through even when a file change is detected
 # KILL_STALE will kill the stale processe that is and must be PRIOR to the primary running
 # change_dir will change the directory to the root_path prior to the command
 [[config.executes]]
