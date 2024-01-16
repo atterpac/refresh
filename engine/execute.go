@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 type Execute struct {
@@ -90,7 +89,7 @@ func (ex *Execute) run(engine *Engine) error {
 	return nil
 }
 
-func backgroundExec(runString string, delay int) {
+func backgroundExec(runString string) {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	var out, err bytes.Buffer
@@ -99,8 +98,6 @@ func backgroundExec(runString string, delay int) {
 	cmd.Stderr = &err
 	cmd.Start()
 	slog.Debug(fmt.Sprintf("Complete Exec Command: %s", runString))
-	duration := time.Duration(delay) * time.Millisecond
-	time.Sleep(duration)
 }
 
 func execFromString(runString string, block bool) error {

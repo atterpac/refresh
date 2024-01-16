@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/rjeczalik/notify"
 )
@@ -28,6 +29,8 @@ func (engine *Engine) Start() error {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
 	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
+	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
+	time.Sleep(waitTime)
 	go engine.reloadProcess()
 	trapChan := make(chan error)
 	go engine.SigTrap(trapChan)
