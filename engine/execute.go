@@ -78,7 +78,7 @@ func (ex *Execute) run(engine *Engine) error {
 	default:
 		err := execFromString(ex.Cmd, ex.IsBlocking)
 		if err != nil {
-			slog.Error("Running Execute", "command:", ex.Cmd)
+			slog.Error("Running Execute", "command", ex.Cmd, "error", err.Error())
 		}
 	}
 	if restoreDir != "" {
@@ -105,11 +105,11 @@ func execFromString(runString string, block bool) error {
 	// Let Process run in background
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	err := cmd.Start()
+	cmd.Start()
 	if block {
-		err = cmd.Wait()
+		err := cmd.Wait()
 		if err != nil {
-			slog.Error("Running Execute", "command:", runString)
+			slog.Error("Running Execute", "command", runString)
 			return err
 		}
 	}
