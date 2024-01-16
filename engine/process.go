@@ -74,12 +74,12 @@ func killProcess(process *os.Process) bool {
 			return false
 		}
 		return true
-	}
-	// Kill process on other OS's
-	err = syscall.Kill(-pgid, syscall.SIGKILL)
-	if err != nil {
-		slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
-		return false
+	} else {
+		err = syscall.Kill(-pgid, syscall.SIGTERM)
+		if err != nil {
+			slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
+			return false
+		}
 	}
 	time.Sleep(250 * time.Millisecond)
 	return true
