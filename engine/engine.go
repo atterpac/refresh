@@ -46,6 +46,7 @@ func (engine *Engine) SigTrap() {
 func (engine *Engine) Stop() {
 	killProcess(engine.Process)
 	notify.Stop(engine.Chan)
+	os.Exit(0)
 }
 
 func (engine *Engine) SetLogger(logger *slog.Logger) {
