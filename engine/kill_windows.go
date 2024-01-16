@@ -2,7 +2,7 @@
 package engine
 
 import (
-	"exec"
+	"os/exec"
 )
 
 // Window specific kill process
