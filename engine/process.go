@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"runtime"
 	"syscall"
+	"time"
 )
 
 func (engine *Engine) reloadProcess() {
@@ -80,6 +81,7 @@ func killProcess(process *os.Process) bool {
 		slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
 		return false
 	}
+	time.Sleep(250 * time.Millisecond)
 	return true
 }
 

@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/signal"
 	"runtime"
 
 	"github.com/rjeczalik/notify"
@@ -28,7 +29,19 @@ func (engine *Engine) Start() {
 	}
 	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
 	go engine.reloadProcess()
+	go engine.SigTrap()
 	engine.watch()
+}
+
+func (engine *Engine) SigTrap() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		<-signalChan
+		slog.Warn("Graceful Exit")
+		engine.Stop()
+		os.Exit(0)
+	}()
 }
 
 func (engine *Engine) Stop() {
