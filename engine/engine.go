@@ -52,7 +52,6 @@ func (engine *Engine) SigTrap(ch chan error) {
 func (engine *Engine) Stop() {
 	engine.killProcess(engine.ProcessTree)
 	notify.Stop(engine.Chan)
-	os.Exit(0)
 }
 
 func (engine *Engine) SetLogger(logger *slog.Logger) {

@@ -27,11 +27,10 @@ type Config struct {
 }
 
 // Reads a config.toml file and returns the engine
-func (engine *Engine) readConfigFile(path string) *Engine {
+func (engine *Engine) readConfigFile(path string) *Engine{
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
 		slog.Error("Error reading config file")
 		slog.Error(err.Error())
-		os.Exit(1)
 	}
 	return engine
 }
@@ -41,13 +40,11 @@ func (engine *Engine) readConfigYaml(path string) *Engine {
 	if err != nil {
 		slog.Error("Error reading config file")
 		slog.Error(err.Error())
-		os.Exit(1)	
 	}
 	err = yaml.Unmarshal(file, &engine)
 	if err != nil {
 		slog.Error("Error reading config file")
 		slog.Error(err.Error())
-		os.Exit(1)
 	}
 	return engine
 }
