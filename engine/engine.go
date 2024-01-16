@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -10,7 +11,7 @@ import (
 )
 
 type Engine struct {
-	Process        Process
+	ProcessTree    Process
 	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config" yaml:"config"`
@@ -28,32 +29,25 @@ func (engine *Engine) Start() error {
 	}
 	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
 	go engine.reloadProcess()
-	if err := engine.SigTrap(); err != nil {
-		return err
-	}
+	trapChan := make(chan error)
+	go engine.SigTrap(trapChan)
 	go engine.watch()
-	return nil
+	return <-trapChan
 }
 
-func (engine *Engine) SigTrap() error {
+func (engine *Engine) SigTrap(ch chan error) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
-	exitChan := make(chan error)
-	defer close(exitChan)
 	go func() {
-		select {
-		case sig := <-signalChan:
-			slog.Warn("Graceful Exit Requested", "signal", sig)
-			engine.Stop()
-		case <-exitChan:
-			return
-		}
+		sig := <-signalChan
+		slog.Warn("Graceful Exit Requested", "signal", sig)
+		engine.Stop()
+		ch <- errors.New("Graceful Exit Requested")
 	}()
-	return <-exitChan
 }
 
 func (engine *Engine) Stop() {
-	engine.killProcess(engine.Process)
+	engine.killProcess(engine.ProcessTree)
 	notify.Stop(engine.Chan)
 	os.Exit(0)
 }

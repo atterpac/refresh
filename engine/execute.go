@@ -7,13 +7,15 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type Execute struct {
-	Cmd        string      `toml:"cmd" yaml:"cmd"`      // Execute command
-	ChangeDir  string      `toml:"dir" yaml:"dir"` // If directory needs to be changed to call this command relative to the root path
-	IsBlocking bool        `toml:"blocking" yaml:"blocking"` // Should the following executes wait for this one to complete
-	IsPrimary  bool        `toml:"primary" yaml:"primary"`  // Only one primary command can be run at a time
+	Cmd        string      `toml:"cmd" yaml:"cmd"`               // Execute command
+	ChangeDir  string      `toml:"dir" yaml:"dir"`               // If directory needs to be changed to call this command relative to the root path
+	IsBlocking bool        `toml:"blocking" yaml:"blocking"`     // Should the following executes wait for this one to complete
+	IsPrimary  bool        `toml:"primary" yaml:"primary"`       // Only one primary command can be run at a time
+	DelayNext  int         `toml:"delay_next" yaml:"delay_next"` // Delay in milliseconds before running command
 	process    *os.Process // Stores the Exec.Start() process
 }
 
@@ -43,8 +45,8 @@ func (ex *Execute) run(engine *Engine) error {
 	}
 	if ex.IsPrimary {
 		slog.Debug("Reloading Process")
-		engine.Process.Process, err = engine.startPrimary(ex.Cmd)
-		slog.Info("Primary Process Started", "pid", engine.Process.Process.Pid)
+		engine.ProcessTree.Process, err = engine.startPrimary(ex.Cmd)
+		slog.Info("Primary Process Started", "pid", engine.ProcessTree.Process.Pid)
 		if err != nil {
 			slog.Error(fmt.Sprintf("Starting Run command: %s", err.Error()))
 			os.Exit(1)
@@ -65,7 +67,7 @@ func (ex *Execute) run(engine *Engine) error {
 		}
 		if engine.isRunning() {
 			slog.Debug("Killing Stale Version")
-			ok := engine.killProcess(engine.Process)
+			ok := engine.killProcess(engine.ProcessTree)
 			if !ok {
 				slog.Error("Releasing stale process")
 			}
@@ -88,7 +90,7 @@ func (ex *Execute) run(engine *Engine) error {
 	return nil
 }
 
-func backgroundExec(runString string) {
+func backgroundExec(runString string, delay int) {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	var out, err bytes.Buffer
@@ -97,6 +99,8 @@ func backgroundExec(runString string) {
 	cmd.Stderr = &err
 	cmd.Start()
 	slog.Debug(fmt.Sprintf("Complete Exec Command: %s", runString))
+	duration := time.Duration(delay) * time.Millisecond
+	time.Sleep(duration)
 }
 
 func execFromString(runString string, block bool) error {

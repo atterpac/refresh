@@ -39,12 +39,12 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 			return nil, err
 		}
 	}
-	engine.setPGID(cmd)
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
 		return nil, err
 	}
+	engine.setPGID(cmd)
 	slog.Debug("Starting log pipe")
 	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
@@ -56,10 +56,10 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 
 // Check if a child process is running
 func (engine *Engine) isRunning() bool {
-	if engine.Process.Process == nil {
+	if engine.ProcessTree.Process == nil {
 		return false
 	}
-	_, err := os.FindProcess(int(engine.Process.Process.Pid))
+	_, err := os.FindProcess(int(engine.ProcessTree.Process.Pid))
 	return err == nil
 }
 

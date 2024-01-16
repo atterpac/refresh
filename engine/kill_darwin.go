@@ -15,7 +15,7 @@ type Process struct {
 }
 
 // Kill spawned child process
-func killProcess(process Process) bool {
+func (engine *Engine) killProcess(process Process) bool {
 	osProcess := process.Process
 	slog.Info("Killing process", "pid", osProcess.Pid)
 	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
