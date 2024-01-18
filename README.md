@@ -46,14 +46,15 @@ Using refresh as a library also opens the ability to add a [Callback](https://gi
 ### Structs
 ```go
 type Config struct {
-	RootPath       string   `toml:"root_path"`
-	BackgroundExec string   `toml:"background_exec"` // Execute that stays running and is unaffected by any reloads npm run dev for example
-	Ignore         Ignore   `toml:"ignore"`
-	ExecList       []string `toml:"exec_list"` // See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle)
-	LogLevel       string   `toml:"log_level"`
-	Debounce       int      `toml:"debounce"`
-	Callback       func(*EventCallback) EventHandle
-	Slog           *slog.Logger
+	RootPath        string   `toml:"root_path"`
+	BackgroundExec  string   `toml:"background_exec"` // Execute that stays running and is unaffected by any reloads npm run dev for example
+    BackgroundCheck bool     `toml:"background_check"`
+	Ignore          Ignore   `toml:"ignore"`
+	ExecList        []string `toml:"exec_list"` // See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle)
+	LogLevel        string   `toml:"log_level"`
+	Debounce        int      `toml:"debounce"`
+	Callback        func(*EventCallback) EventHandle
+	Slog            *slog.Logger
 }
 
 type Ignore struct {
@@ -64,9 +65,11 @@ type Ignore struct {
 }
 
 type Execute struct {
-	Cmd        string
-	IsBlocking bool // Should the next command wait for this command to finish 
-	IsPrimary  bool // Only one primary command can be run at a time
+	Cmd          string      `toml:"cmd" yaml:"cmd"`                     // Execute command
+	ChangeDir    string      `toml:"dir" yaml:"dir"`                     // If directory needs to be changed to call this command relative to the root path
+	IsBlocking   bool        `toml:"blocking" yaml:"blocking"`           // Should the following executes wait for this one to complete
+	IsPrimary    bool        `toml:"primary" yaml:"primary"`             // Only one primary command can be run at a time
+	DelayNext    int         `toml:"delay_next" yaml:"delay_next"`       // Delay in milliseconds before running command
 }
 ```
 
@@ -256,6 +259,8 @@ log_level = "info"
 # Debounce setting for ignoring reptitive file system notifications
 debounce = 1000 # Milliseconds
 # Sets what files the watcher should ignore
+background_check = true
+
 [config.ignore]
 # Ignore follows normal pattern matching including /**/
 # Directories to ignore
@@ -268,6 +273,8 @@ watched_extensions = ["*.go"]
 git_ignore = true
 
 # Runs process in the background and doesnt restart when a refresh is triggered
+# Vite dev and other processes take varying durations and the following commands might rely on them being "complete"
+# This is where setting background_check = true and using a callback in golang library to confirm its state
 [config.background]
 cmd="vite dev"
 
@@ -294,6 +301,16 @@ dir="./bin"
 cmd="./app"
 primary=true
 ```
+
+### Background Check Callback
+There are instances where you want to wait for the "build" steps for something like vite or a server connection that could take a varying amount
+of time to reach a ready state. Refresh adds `engine.AttachBackgroundCallback()` which will hault the execute commands until the callback returns 
+true (or false for error and shutting down). This could be used along side a ping to the vite port for example to ensure it is reached before 
+running commands that rely on it. This requires 3 things
+
+- `background_check = true` in your config.toml or setting the equivalent in golang structs
+-  A callback function that is `func() bool` and returns true when ready and false when errored or exited 
+-  Attaching the callback via `engine.AttachBackgroundCallback()` prior to running `engine.Start()`
 
 #### Flags
 This method is possible but not the most verbose and controlled way to use refresh

@@ -29,16 +29,27 @@ func (engine *Engine) Start() error {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
 	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
+	if engine.Config.BackgroundStruct.BackgroundCheck {
+		if engine.Config.BackgroundCallback == nil {
+			slog.Error("Background Callback not set")
+			return errors.New("Background Callback not set")
+		}
+		ok := engine.Config.BackgroundCallback()
+		if !ok {
+			slog.Error("Background Callback Failed")
+			return errors.New("Background Callback Failed")
+		}
+	}
 	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
 	time.Sleep(waitTime)
 	go engine.reloadProcess()
 	trapChan := make(chan error)
-	go engine.SigTrap(trapChan)
+	go engine.sigTrap(trapChan)
 	go engine.watch()
 	return <-trapChan
 }
 
-func (engine *Engine) SigTrap(ch chan error) {
+func (engine *Engine) sigTrap(ch chan error) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, os.Interrupt)
 	go func() {
@@ -97,4 +108,9 @@ func NewEngineFromYAML(confPath string) *Engine {
 	engine.Config.externalSlog = false
 	engine.verifyConfig()
 	return &engine
+}
+
+func (engine *Engine) AttachBackgroundCallback(callback func() bool) *Engine {
+	engine.Config.BackgroundCallback = callback
+	return engine
 }

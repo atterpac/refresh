@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	refresh "github.com/atterpac/refresh/engine"
 )
 
@@ -43,9 +45,16 @@ func main() {
 	}
 
 	// watch := refresh.NewEngineFromConfig(config)
-	watch := refresh.NewEngineFromYAML("./example.yaml")
+	watch := refresh.NewEngineFromTOML("./example.toml")
 
-	watch.Start()
+	watch.AttachBackgroundCallback(func() bool {
+		time.Sleep(5000 * time.Millisecond)
+		return true
+	})
+	err := watch.Start()
+	if err != nil {
+		panic(err)
+	}
 
 	<-make(chan struct{})
 }

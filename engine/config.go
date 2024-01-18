@@ -13,21 +13,22 @@ import (
 )
 
 type Config struct {
-	RootPath         string    `toml:"root_path" yaml:"root_path"`
-	BackgroundStruct Execute   `toml:"background" yaml:"background"`
-	Ignore           Ignore    `toml:"ignore" yaml:"ignore"`
-	ExecStruct       []Execute `toml:"executes" yaml:"executes"`
-	ExecList         []string  `toml:"exec_list" yaml:"exec_list"`
-	LogLevel         string    `toml:"log_level" yaml:"log_level"`
-	Debounce         int       `toml:"debounce" yaml:"debounce"`
-	Callback         func(*EventCallback) EventHandle
-	Slog             *slog.Logger
-	ignoreMap        ignoreMap
-	externalSlog     bool
+	RootPath           string      `toml:"root_path" yaml:"root_path"`
+	BackgroundStruct   Execute     `toml:"background" yaml:"background"`
+	BackgroundCallback func() bool `toml:"-" yaml:"-"`
+	Ignore             Ignore      `toml:"ignore" yaml:"ignore"`
+	ExecStruct         []Execute   `toml:"executes" yaml:"executes"`
+	ExecList           []string    `toml:"exec_list" yaml:"exec_list"`
+	LogLevel           string      `toml:"log_level" yaml:"log_level"`
+	Debounce           int         `toml:"debounce" yaml:"debounce"`
+	Callback           func(*EventCallback) EventHandle
+	Slog               *slog.Logger
+	ignoreMap          ignoreMap
+	externalSlog       bool
 }
 
 // Reads a config.toml file and returns the engine
-func (engine *Engine) readConfigFile(path string) *Engine{
+func (engine *Engine) readConfigFile(path string) *Engine {
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
 		slog.Error("Error reading config file")
 		slog.Error(err.Error())
@@ -48,7 +49,6 @@ func (engine *Engine) readConfigYaml(path string) *Engine {
 	}
 	return engine
 }
-	
 
 // Verify required data is present in config
 func (engine *Engine) verifyConfig() {
@@ -161,3 +161,4 @@ func changeWorkingDirectory(path string) {
 		slog.Error("Setting new directory", "dir", path)
 	}
 }
+
