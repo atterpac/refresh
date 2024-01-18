@@ -15,7 +15,6 @@ type Execute struct {
 	IsBlocking      bool        `toml:"blocking" yaml:"blocking"`                 // Should the following executes wait for this one to complete
 	IsPrimary       bool        `toml:"primary" yaml:"primary"`                   // Only one primary command can be run at a time
 	DelayNext       int         `toml:"delay_next" yaml:"delay_next"`             // Delay in milliseconds before running command
-	BackgroundCheck bool        `toml:"background_check" yaml:"background_check"` // Should the background callback be run
 	process         *os.Process // Stores the Exec.Start() process
 }
 

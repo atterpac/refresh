@@ -29,11 +29,7 @@ func (engine *Engine) Start() error {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
 	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
-	if engine.Config.BackgroundStruct.BackgroundCheck {
-		if engine.Config.BackgroundCallback == nil {
-			slog.Error("Background Callback not set")
-			return errors.New("Background Callback not set")
-		}
+	if engine.Config.BackgroundCallback != nil {
 		ok := engine.Config.BackgroundCallback()
 		if !ok {
 			slog.Error("Background Callback Failed")

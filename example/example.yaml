@@ -13,7 +13,6 @@ config:
       - '*.go'
   background:
     cmd: pwd
-    background_check: true
   executes:
     - cmd: go mod tidy
       blocking: true

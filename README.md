@@ -306,9 +306,8 @@ primary=true
 There are instances where you want to wait for the "build" steps for something like vite or a server connection that could take a varying amount
 of time to reach a ready state. Refresh adds `engine.AttachBackgroundCallback()` which will hault the execute commands until the callback returns 
 true (or false for error and shutting down). This could be used along side a ping to the vite port for example to ensure it is reached before 
-running commands that rely on it. This requires 3 things
+running commands that rely on it. This requires 2 things
 
-- `background_check = true` in your config.toml or setting the equivalent in golang structs
 -  A callback function that is `func() bool` and returns true when ready and false when errored or exited 
 -  Attaching the callback via `engine.AttachBackgroundCallback()` prior to running `engine.Start()`
 
