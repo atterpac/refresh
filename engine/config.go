@@ -52,8 +52,19 @@ func (engine *Engine) readConfigYaml(path string) (*Engine, error) {
 	return engine, nil
 }
 
-func (engine *Engine) YAMLtoConfig(yamlString string) error {
+func (engine *Engine) StringtoConfigYAML(yamlString string) error {
 	err := yaml.Unmarshal([]byte(yamlString), &engine)
+	if err != nil {
+		slog.Error("Error reading config file", err)
+		slog.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
+
+func (engine *Engine) StringtoConfigTOML(tomlString string) error {
+	err := yaml.Unmarshal([]byte(tomlString), &engine)
 	if err != nil {
 		slog.Error("Error reading config file", err)
 		slog.Error(err.Error())
