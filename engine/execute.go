@@ -45,11 +45,12 @@ func (ex *Execute) run(engine *Engine) error {
 	if ex.IsPrimary {
 		slog.Debug("Reloading Process")
 		engine.ProcessTree.Process, err = engine.startPrimary(ex.Cmd)
-		slog.Info("Primary Process Started", "pid", engine.ProcessTree.Process.Pid)
+		if engine.ProcessTree.Process == nil {
 		if err != nil {
-			slog.Error(fmt.Sprintf("Starting Run command: %s", err.Error()))
-			os.Exit(1)
+			slog.Error("Starting Run command", err, "command", ex.Cmd)
+			return err
 		}
+		slog.Info("Primary Process Started", "pid", engine.ProcessTree.Process.Pid)
 		if restoreDir != "" {
 			slog.Info("Restoring working Dir")
 			changeWorkingDirectory(restoreDir)
