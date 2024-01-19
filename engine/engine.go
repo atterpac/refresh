@@ -67,7 +67,7 @@ func (engine *Engine) SetLogger(logger *slog.Logger) {
 }
 
 // This is out of date
-func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore Ignore, debounce int, chunkSize string) *Engine {
+func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore Ignore, debounce int, chunkSize string) (*Engine, error) {
 	engine := &Engine{}
 	engine.Config = Config{
 		RootPath: rootPath,
@@ -76,34 +76,52 @@ func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore
 		Ignore:   ignore,
 		Debounce: debounce,
 	}
-	engine.verifyConfig()
-	return engine
+	err := engine.verifyConfig()
+	if err != nil {
+		return nil, err
+	}
+	return engine, nil
 }
 
-func NewEngineFromConfig(options Config) *Engine {
+func NewEngineFromConfig(options Config) (*Engine, error) {
 	engine := &Engine{}
 	engine.Config = options
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
-	engine.verifyConfig()
-	return engine
+	err := engine.verifyConfig()
+	if err != nil {
+		return nil, err
+	}
+	return engine, nil
 }
 
-func NewEngineFromTOML(confPath string) *Engine {
+func NewEngineFromTOML(confPath string) (*Engine, error) {
 	engine := Engine{}
-	engine.readConfigFile(confPath)
+	_, err := engine.readConfigFile(confPath)
+	if err != nil {
+		return nil, err
+	}
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	engine.Config.externalSlog = false
-	engine.verifyConfig()
-	return &engine
+	err = engine.verifyConfig()
+	if err != nil {
+		return nil, err
+	}
+	return &engine, nil
 }
 
-func NewEngineFromYAML(confPath string) *Engine {
+func NewEngineFromYAML(confPath string) (*Engine, error) {
 	engine := Engine{}
-	engine.readConfigYaml(confPath)
+	_, err := engine.readConfigYaml(confPath)
+	if err != nil {
+		return nil, err
+	}
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	engine.Config.externalSlog = false
-	engine.verifyConfig()
-	return &engine
+	err = engine.verifyConfig()
+	if err != nil {
+		return nil, err
+	}
+	return &engine, nil
 }
 
 func (engine *Engine) AttachBackgroundCallback(callback func() bool) *Engine {

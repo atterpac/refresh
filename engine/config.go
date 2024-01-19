@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -28,56 +29,59 @@ type Config struct {
 }
 
 // Reads a config.toml file and returns the engine
-func (engine *Engine) readConfigFile(path string) *Engine {
+func (engine *Engine) readConfigFile(path string) (*Engine, error) {
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
-		slog.Error("Error reading config file")
-		slog.Error(err.Error())
+		slog.Error("Error reading config file", err)
+		return nil, err
 	}
-	return engine
+	return engine, nil
 }
 
-func (engine *Engine) readConfigYaml(path string) *Engine {
+func (engine *Engine) readConfigYaml(path string) (*Engine, error) {
 	file, err := os.ReadFile(path)
 	if err != nil {
-		slog.Error("Error reading config file")
-		slog.Error(err.Error())
+		slog.Error("Error reading config file", err)
+		return nil, err
 	}
 	err = yaml.Unmarshal(file, &engine)
 	if err != nil {
-		slog.Error("Error reading config file")
+		slog.Error("Error reading config file", err)
 		slog.Error(err.Error())
+		return nil, err
 	}
-	return engine
+	return engine, nil
 }
 
 // Verify required data is present in config
-func (engine *Engine) verifyConfig() {
+func (engine *Engine) verifyConfig() error {
 	slog.Debug("Verifying Config")
 	if engine.Config.RootPath == "" {
 		slog.Error("Required Root Path is not set")
-		os.Exit(1)
+		return errors.New("Required Root Path is not set")
 	}
-	engine.verifyExecute()
+	err := engine.verifyExecute()
+	if err != nil {
+		return err
+	}
 	slog.Debug("Config Verified")
 	// Change directory executes are called in to match root directory
 	cleaned := cleanDirectory(engine.Config.RootPath)
 	slog.Info("Changing Working Directory", "dir", cleaned)
 	changeWorkingDirectory(cleaned)
+	return nil
 }
 
 // Verify execute structs
-func (engine *Engine) verifyExecute() {
+func (engine *Engine) verifyExecute() error {
 	var primary bool
 	if len(engine.Config.ExecList) == 2 && len(engine.Config.ExecStruct) < 2 {
-		slog.Error("Execute list or struct's must be provided in the refresh config")
-		os.Exit(1)
+		return errors.New("Execute list or struct's must be provided in the refresh config")
 	}
 	if engine.Config.ExecList == nil {
 		for _, exe := range engine.Config.ExecStruct {
 			if exe.IsPrimary {
 				if primary {
-					slog.Error("Only one primary function can be set")
-					os.Exit(1)
+					return errors.New("Only one primary execute can be set")
 				}
 				primary = true
 			}
@@ -96,18 +100,16 @@ func (engine *Engine) verifyExecute() {
 			}
 		}
 		if !kill && !refresh {
-			slog.Error("Execute List must contain `KILL_STALE` and `REFRESH`")
-			os.Exit(1)
+			return errors.New("Execute List must contain `KILL_STALE` and `REFRESH`")
 		}
 		if !kill {
-			slog.Error("Execute list must contain `KILL_STALE`")
-			os.Exit(1)
+			return errors.New("Execute List must contain `KILL_STALE`")
 		}
 		if !refresh {
-			slog.Error("Execut list must contain `REFRESH`")
-			os.Exit(1)
+			return errors.New("Execute List must contain `REFRESH`")
 		}
 	}
+	return nil
 }
 
 func readGitIgnore(path string) map[string]struct{} {

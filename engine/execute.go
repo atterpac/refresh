@@ -10,12 +10,12 @@ import (
 )
 
 type Execute struct {
-	Cmd             string      `toml:"cmd" yaml:"cmd"`                           // Execute command
-	ChangeDir       string      `toml:"dir" yaml:"dir"`                           // If directory needs to be changed to call this command relative to the root path
-	IsBlocking      bool        `toml:"blocking" yaml:"blocking"`                 // Should the following executes wait for this one to complete
-	IsPrimary       bool        `toml:"primary" yaml:"primary"`                   // Only one primary command can be run at a time
-	DelayNext       int         `toml:"delay_next" yaml:"delay_next"`             // Delay in milliseconds before running command
-	process         *os.Process // Stores the Exec.Start() process
+	Cmd        string      `toml:"cmd" yaml:"cmd"`               // Execute command
+	ChangeDir  string      `toml:"dir" yaml:"dir"`               // If directory needs to be changed to call this command relative to the root path
+	IsBlocking bool        `toml:"blocking" yaml:"blocking"`     // Should the following executes wait for this one to complete
+	IsPrimary  bool        `toml:"primary" yaml:"primary"`       // Only one primary command can be run at a time
+	DelayNext  int         `toml:"delay_next" yaml:"delay_next"` // Delay in milliseconds before running command
+	process    *os.Process // Stores the Exec.Start() process
 }
 
 var KILL_STALE = Execute{
@@ -36,7 +36,7 @@ func (ex *Execute) run(engine *Engine) error {
 	}
 	if ex.ChangeDir != "" {
 		restoreDir, err = os.Getwd()
-		slog.Info("Change Directory Set", "WD", restoreDir)
+		slog.Debug("Change Directory Set", "WD", restoreDir)
 		if err != nil {
 			slog.Error("Getting working directory")
 		}
@@ -46,16 +46,17 @@ func (ex *Execute) run(engine *Engine) error {
 		slog.Debug("Reloading Process")
 		engine.ProcessTree.Process, err = engine.startPrimary(ex.Cmd)
 		if engine.ProcessTree.Process == nil {
-		if err != nil {
-			slog.Error("Starting Run command", err, "command", ex.Cmd)
-			return err
+			if err != nil {
+				slog.Error("Starting Run command", err, "command", ex.Cmd)
+				return err
+			}
+			slog.Info("Primary Process Started", "pid", engine.ProcessTree.Process.Pid)
+			if restoreDir != "" {
+				slog.Info("Restoring working Dir")
+				changeWorkingDirectory(restoreDir)
+			}
+			return nil
 		}
-		slog.Info("Primary Process Started", "pid", engine.ProcessTree.Process.Pid)
-		if restoreDir != "" {
-			slog.Info("Restoring working Dir")
-			changeWorkingDirectory(restoreDir)
-		}
-		return nil
 	}
 	switch ex.Cmd {
 	case "":

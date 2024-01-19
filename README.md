@@ -128,8 +128,14 @@ func main () {
                          // If provided stdout will not be piped through refresh
 	}
 
-	engine := refresh.NewEngineFromConfig(config)
-	engine.Start()
+	engine, err := refresh.NewEngineFromConfig(config)
+    if err != nil {
+        //Handle err
+    }
+	err = engine.Start()
+    if err != nil {
+        // Start will return an error when a user hits ctrl-c after it gracefully kills the processes
+    }
 
 	// Stop monitoring files and kill child processes
 	engine.Stop()
