@@ -52,6 +52,16 @@ func (engine *Engine) readConfigYaml(path string) (*Engine, error) {
 	return engine, nil
 }
 
+func (engine *Engine) YAMLtoConfig(yamlString string) error {
+	err := yaml.Unmarshal([]byte(yamlString), &engine)
+	if err != nil {
+		slog.Error("Error reading config file", err)
+		slog.Error(err.Error())
+		return err
+	}
+	return nil
+}
+
 // Verify required data is present in config
 func (engine *Engine) verifyConfig() error {
 	slog.Debug("Verifying Config")
