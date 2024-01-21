@@ -15,12 +15,9 @@ type Process struct {
 	Process *os.Process
 }
 
-// Kill spawned child process
 func (engine *Engine) killProcess(process Process) bool {
 	osProcess := process.Process
-	slog.Info("Killing process", "pid", osProcess.Pid)
-	// Windows requires special handling due to calls happening in "user mode" vs "kernel mode"
-	// User mode doesnt allow for killing process so the work around currently is running taskkill command in cmd
+	slog.Info("Killing ye old process", "pid", osProcess.Pid)
 	pgid, err := syscall.Getpgid(osProcess.Pid)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Getting process group id: %s", err.Error()))
@@ -37,4 +34,8 @@ func (engine *Engine) killProcess(process Process) bool {
 
 func (engine *Engine) setPGID(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+}
+
+func removePGID(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
 }

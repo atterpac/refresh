@@ -59,7 +59,12 @@ func (engine *Engine) isRunning() bool {
 	if engine.ProcessTree.Process == nil {
 		return false
 	}
-	_, err := os.FindProcess(int(engine.ProcessTree.Process.Pid))
+	foundProcess, err := os.FindProcess(int(engine.ProcessTree.Process.Pid))
+	if err != nil {
+		slog.Error(fmt.Sprintf("Finding process: %s", err.Error()))
+		return false
+	}
+	slog.Debug("Process running... attempting to kill", "pid", foundProcess.Pid)
 	return err == nil
 }
 

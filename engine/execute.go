@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type Execute struct {
@@ -29,6 +30,7 @@ var KILL_EXEC = "KILL_STALE"
 var firstRun = true
 
 func (ex *Execute) run(engine *Engine) error {
+	slog.Info("Running Execute", "command", ex.Cmd)
 	var err error
 	var restoreDir string = ""
 	if ex.Cmd == "" {
@@ -44,12 +46,13 @@ func (ex *Execute) run(engine *Engine) error {
 	}
 	if ex.IsPrimary {
 		slog.Debug("Reloading Process")
+		time.Sleep(500 * time.Millisecond)
 		engine.ProcessTree.Process, err = engine.startPrimary(ex.Cmd)
-		if engine.ProcessTree.Process == nil {
-			if err != nil {
-				slog.Error("Starting Run command", err, "command", ex.Cmd)
-				return err
-			}
+		if err != nil {
+			slog.Error("Starting Run command", err, "command", ex.Cmd)
+			return err
+		}
+		if engine.ProcessTree.Process != nil {
 			slog.Info("Primary Process Started", "pid", engine.ProcessTree.Process.Pid)
 			if restoreDir != "" {
 				slog.Info("Restoring working Dir")
@@ -98,6 +101,7 @@ func backgroundExec(runString string) {
 	// Let Process run in background
 	cmd.Stdout = &out
 	cmd.Stderr = &err
+	removePGID(cmd)
 	cmd.Start()
 	slog.Debug(fmt.Sprintf("Complete Exec Command: %s", runString))
 }

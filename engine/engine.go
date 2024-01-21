@@ -128,3 +128,4 @@ func (engine *Engine) AttachBackgroundCallback(callback func() bool) *Engine {
 	engine.Config.BackgroundCallback = callback
 	return engine
 }
+

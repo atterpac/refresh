@@ -32,6 +32,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) error {
 			slog.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
 			continue
 		}
+		// Callback handling
 		if engine.Config.Callback != nil {
 			event := CallbackMap[ei.Event()]
 			handle := engine.Config.Callback(&EventCallback{
@@ -98,3 +99,4 @@ func stripCurrentDirectory(fullPath, currentDirectory string) (string, error) {
 
 	return relativePath, nil
 }
+
