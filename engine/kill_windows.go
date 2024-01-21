@@ -31,7 +31,7 @@ func (engine *Engine) killProcess(process Process) bool {
 	osProcess := process.Process
 	slog.Info("Killing process", "pid", osProcess.Pid)
 	err := engine.ProcessTree.JobObject.Terminate(1)
-	time.Sleep(250 * time.Millisecond)
+	time.sleep(250 * time.Millisecond)
 	return err == nil
 }
 
@@ -69,4 +69,8 @@ func (engine *Engine) setPGID(cmd *exec.Cmd) {
 	if err != nil {
 		slog.Error(fmt.Sprintf("Adding process to job object: %s", err.Error()))
 	}
+}
+
+func removePGID(cmd *exec.Cmd) {
+	// TODO: Implement
 }

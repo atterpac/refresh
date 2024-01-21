@@ -37,3 +37,7 @@ func (engine *Engine) killProcess(process Process) bool {
 func (engine *Engine) setPGID(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
+
+func removePGID(cmd *exec.Cmd) {
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
+}
