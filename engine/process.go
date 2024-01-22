@@ -39,12 +39,12 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 			return nil, err
 		}
 	}
+	spawnNewProcessGroup(cmd)
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
 		return nil, err
 	}
-	engine.setPGID(cmd)
 	slog.Debug("Starting log pipe")
 	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {

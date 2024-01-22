@@ -28,7 +28,7 @@ func (engine *Engine) Start() error {
 	if engine.Config.Ignore.IgnoreGit {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
-	go backgroundExec(engine.Config.BackgroundStruct.Cmd)
+	engine.Config.BackgroundStruct.process = backgroundExec(engine.Config.BackgroundStruct.Cmd)
 	if engine.Config.BackgroundCallback != nil {
 		ok := engine.Config.BackgroundCallback()
 		if !ok {
@@ -58,6 +58,8 @@ func (engine *Engine) sigTrap(ch chan error) {
 
 func (engine *Engine) Stop() {
 	engine.killProcess(engine.ProcessTree)
+	localProcess := Process{Process: engine.Config.BackgroundStruct.process}
+	engine.killProcess(localProcess)
 	notify.Stop(engine.Chan)
 }
 

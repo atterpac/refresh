@@ -3,12 +3,10 @@
 package engine
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"syscall"
-	"time"
 )
 
 type Process struct {
@@ -17,25 +15,20 @@ type Process struct {
 
 func (engine *Engine) killProcess(process Process) bool {
 	osProcess := process.Process
-	slog.Info("Killing ye old process", "pid", osProcess.Pid)
+	slog.Debug("Killing process", "pid", osProcess.Pid)
 	pgid, err := syscall.Getpgid(osProcess.Pid)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Getting process group id: %s", err.Error()))
+		slog.Error("Getting process group id", "err", err.Error())
 		return false
 	}
-	err = syscall.Kill(-pgid, syscall.SIGTERM)
+	err = syscall.Kill(-pgid, syscall.SIGKILL)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Killing process: %s", err.Error()))
+		slog.Error("Killing process", "err", err.Error())
 		return false
 	}
-	time.Sleep(250 * time.Millisecond)
 	return true
 }
 
-func (engine *Engine) setPGID(cmd *exec.Cmd) {
+func spawnNewProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-}
-
-func removePGID(cmd *exec.Cmd) {
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true, Pgid: 0}
 }

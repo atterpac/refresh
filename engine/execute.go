@@ -2,7 +2,6 @@ package engine
 
 import (
 	"bytes"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -82,10 +81,11 @@ func (ex *Execute) run(engine *Engine) error {
 			}
 		}
 	default:
-		err := execFromString(ex.Cmd, ex.IsBlocking)
+		ex.process, err = execFromString(ex.Cmd, ex.IsBlocking)
 		if err != nil {
 			slog.Error("Running Execute", "command", ex.Cmd, "error", err.Error())
 		}
+		slog.Debug("Complete Exec Command", "cmd", ex.Cmd, "pid", ex.process.Pid)
 	}
 	if restoreDir != "" {
 		slog.Info("Restoring working Dir")
@@ -94,19 +94,21 @@ func (ex *Execute) run(engine *Engine) error {
 	return nil
 }
 
-func backgroundExec(runString string) {
+func backgroundExec(runString string) *os.Process {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	var out, err bytes.Buffer
 	// Let Process run in background
 	cmd.Stdout = &out
 	cmd.Stderr = &err
-	removePGID(cmd)
+	spawnNewProcessGroup(cmd)
 	cmd.Start()
-	slog.Debug(fmt.Sprintf("Complete Exec Command: %s", runString))
+	process := cmd.Process
+	slog.Debug("Complete Exec Command", "cmd", runString)
+	return process
 }
 
-func execFromString(runString string, block bool) error {
+func execFromString(runString string, block bool) (*os.Process, error) {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	// Let Process run in background
@@ -117,10 +119,10 @@ func execFromString(runString string, block bool) error {
 		err := cmd.Wait()
 		if err != nil {
 			slog.Error("Running Execute", "command", runString)
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return cmd.Process, nil
 }
 
 // Takes a string and splits it on spaces to create a slice of strings
