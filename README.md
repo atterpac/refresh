@@ -39,7 +39,7 @@ These declarations let refresh know when you would like to kill the stale proces
 Whatever command after REFRESH is considered your "main" subprocess and the one that is tracked inside of refresh
 
 ## Embedding into your dev project
-There can be some uses where you might want to start a watcher internally or for a tool for development refresh provides a function `NewEngineFromOptions` which takes an `refresh.Config` and allows for the `engine.Start()` function
+There can be some uses where you might want to start a watcher internally or for a tool for development refresh provides a function `NewEngineFromOptions` which takes an `engine.Config` and allows for the `engine.Start()` function
 
 Using refresh as a library also opens the ability to add a [Callback](https://github.com/atterpac/refresh#reload-callback) function that is called on every FS notification
 
@@ -77,12 +77,12 @@ type Execute struct {
 For a functioning example see ./example and run main.go below describes what declaring an engine could look like
 ```go
 import ( // other imports
-     refresh "github.com/atterpac/refresh/engine"
+     "github.com/atterpac/refresh/engine"
     )
 
 func main () {
     // Setup your watched exensions and any ignored files or directories
-	ignore := refresh.Ignore{
+	ignore := engine.Ignore{
         // Can use * wildcards per usual filepath pattern matching (including /**/) 
         // ! denoted an invert in this example ignoring any extensions that are not *.go
         WatchedExten: []string{"*.go"}, // Ignore all files that are not go
@@ -91,38 +91,38 @@ func main () {
         IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
     // Build execute structs
-	tidy := refresh.Execute{
+	tidy := engine.Execute{
 		Cmd:        "go mod tidy",
 		IsBlocking: true, // Next command should wait for this to finish
 	}
-	build := refresh.Execute{
+	build := engine.Execute{
 		Cmd:        "go build -o ./bin/myapp",
 		IsBlocking: true, // Wait to kill (next step) until the new binary is built
 	}
     // Provided KILL_STALE will tell refresh when you would like to remove the stale process to prepare to launch the new one
-	kill := refresh.KILL_STALE 
+	kill := engine.KILL_STALE 
     // Primary process usually runs your binary
-	run := refresh.Execute{
+	run := engine.Execute{
         ChangeDir:   "./bin", // Change directory to call command in
 		Cmd:        "./myapp",
 		IsBlocking: false, // Should not block because it doesnt finish until Killed by refresh
 		IsPrimary:  true, // This is the main process refersh is rerunning so denoting it as primary
 	}
     // Create config to pass into refresh.NewEngineFromConfig()
-	config := refresh.Config{
+	config := engine.Config{
 		RootPath: "./test",
 		// Below is ran when a reload is triggered before killing the stale version
 		Ignore:     ignore,
 		Debounce:   1000, // Time in ms to ignore repitive reload triggers usually caused by an OS creating multiple write/rename events for a singular change
 		LogLevel:   "debug", // debug | info | warn | error | mute -> surpresses all logs to the stdOut
-        Callback:   RefreshCallback, // func(*refresh.Callback) refresh.EventHandle {}
+        Callback:   RefreshCallback, // func(*engine.Callback) refresh.EventHandle {}
 		ExecStruct: []refresh.Execute{tidy, build, kill, run},
         // Alternatively for easier config but less control over executes
         // ExecList: []string{"go mod tidy", "go build -o ./myapp", refresh.KILL_EXEC, refresh.REFRESH_EXEC, "./myapp"}
         // All calls will be blocking with the exception of the call after REFRESH
         // Both KILL_EXEC and REFRESH_EXEC are **REQUIRED** for refresh to function properly
-        // refresh.KILL_EXEC denotes when the stale process should be killed
-        // refresh.REFRESH_EXEC denotes the next execute is "primary"
+        // engine.KILL_EXEC denotes when the stale process should be killed
+        // engine.REFRESH_EXEC denotes the next execute is "primary"
 		Slog:       nil, // Optionally provide a slog interface
                          // if nil a default will be provided
                          // If provided stdout will not be piped through refresh
@@ -141,20 +141,20 @@ func main () {
 	engine.Stop()
 }
 
-func RefreshCallback(e *refresh.EventCallback) refresh.EventHandle {
+func RefreshCallback(e *engine.EventCallback) engine.EventHandle {
     switch e.Type {
-        case refresh.Create:
-            return refresh.EventIgnore
-        case refresh.Write:
+        case engine.Create:
+            return engine.EventIgnore
+        case engine.Write:
                 if e.Path == "test/monitored/ignore.go" {
-                    return refresh.EventBypass
+                    return engine.EventBypass
                 }
-                return refresh.EventContinue
-        case refresh.Remove:
-                    return refresh.EventContinue
+                return engine.EventContinue
+        case engine.Remove:
+                    return engine.EventContinue
                         // Other cases as needed ...
     }
-    return refresh.EventContinue
+    return engine.EventContinue
 }
 ```
 ### Reload Callback
@@ -206,11 +206,11 @@ Below describes the data that you recieve in the callback function as well as an
 
 Callbacks should return an refresh.EventHandle
 
-`refresh.EventContinue` continues with the reload process as normal and follows the refresh ruleset defined in the config
+`engine.EventContinue` continues with the reload process as normal and follows the refresh ruleset defined in the config
 
-`refresh.EventBypass` disregards all config rulesets and restarts the exec process
+`engine.EventBypass` disregards all config rulesets and restarts the exec process
 
-`refresh.EventIgnore` ignores the event and continues monitoring
+`engine.EventIgnore` ignores the event and continues monitoring
 
 ```go
 // Called whenever a change is detected in the filesystem
@@ -229,23 +229,23 @@ const (
 
 func ExampleCallback(e refresh.EventCallback) refresh.EventHandle {
 	switch e.Type {
-	case refresh.Create:
+	case engine.Create:
 		// Continue with reload process based on configured ruleset
 		return refresh.EventContinue
-	case refresh.Write:
+	case engine.Write:
 		// Ignore a file that would normally trigger a reload based on config
 		if e.Path == "path/to/watched/file" {
-			return refresh.EventIgnore
+			return engine.EventIgnore
 		}
 		// Continue with reload ruleset but add some extra logs/logic
 		fmt.Println("File Modified: %s", e.Path)	
-		return EventContinue
-	case refresh.Remove:
+		return engine.EventContinue
+	case engine.Remove:
 		// refresh will ignore this event by default
 		// Return EventBypass to force reload process
-		return refresh.EventBypass
+		return engine.EventBypass
 	}
-	return refresh.EventContinue
+	return engine.EventContinue
 }
 ```
 ### Config File
