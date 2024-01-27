@@ -45,7 +45,6 @@ func (engine *Engine) startPrimaryProcess(runString string) (*os.Process, error)
 	return cmd.Process, nil
 }
 
-
 func (engine *Engine) startBackgroundProcess(runString string) *os.Process {
 	cmd := generateExec(runString)
 	var out, err bytes.Buffer
@@ -74,11 +73,7 @@ var (
 
 // Window specific kill process
 func (engine *Engine) killProcess(process Process) bool {
-	osProcess := process.Process
-	if osProcess == nil {
-		return false
-	}
-	slog.Info("Killing process", "pid", osProcess.Pid)
+	slog.Info("Killing Windows Job Object"
 	err := engine.ProcessTree.JobObject.Terminate(1)
 	return err == nil
 }
