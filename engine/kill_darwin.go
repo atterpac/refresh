@@ -28,6 +28,6 @@ func (engine *Engine) killProcess(process Process) bool {
 	return true
 }
 
-func removePGID(cmd *exec.Cmd) {
+func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }

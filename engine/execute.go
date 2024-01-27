@@ -94,14 +94,14 @@ func (ex *Execute) run(engine *Engine) error {
 	return nil
 }
 
-func backgroundExec(runString string) *os.Process {
+func (engine *Engine) backgroundExec(runString string) *os.Process {
 	commandSlice := generateExec(runString)
 	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
 	var out, err bytes.Buffer
 	// Let Process run in background
 	cmd.Stdout = &out
 	cmd.Stderr = &err
-	spawnNewProcessGroup(cmd)
+	engine.spawnNewProcessGroup(cmd)
 	cmd.Start()
 	process := cmd.Process
 	slog.Debug("Complete Exec Command", "cmd", runString)

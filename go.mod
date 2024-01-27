@@ -1,6 +1,6 @@
 module github.com/atterpac/refresh
 
-go 1.21.1
+go 1.21
 
 require (
 	github.com/BurntSushi/toml v1.3.2

@@ -39,7 +39,7 @@ func (engine *Engine) startPrimary(runString string) (*os.Process, error) {
 			return nil, err
 		}
 	}
-	spawnNewProcessGroup(cmd)
+	engine.spawnNewProcessGroup(cmd)
 	err = cmd.Start()
 	if err != nil {
 		fmt.Println(cmd.Err)
