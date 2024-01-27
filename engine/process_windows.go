@@ -73,7 +73,7 @@ var (
 
 // Window specific kill process
 func (engine *Engine) killProcess(process Process) bool {
-	slog.Info("Killing Windows Job Object"
+	slog.Info("Killing Windows Job Object")
 	err := engine.ProcessTree.JobObject.Terminate(1)
 	return err == nil
 }
