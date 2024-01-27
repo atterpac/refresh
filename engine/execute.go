@@ -84,7 +84,7 @@ func (ex *Execute) run(engine *Engine) error {
 		if err != nil {
 			slog.Error("Running Execute", "command", ex.Cmd, "error", err.Error())
 		}
-		slog.Debug("Complete Exec Command", "cmd", ex.Cmd, "pid", ex.process.Pid)
+		slog.Debug("Complete Exec Command", "cmd", ex.Cmd)
 	}
 	if restoreDir != "" {
 		slog.Info("Restoring working Dir")

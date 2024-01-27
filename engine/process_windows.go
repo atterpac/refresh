@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"log/slog"
+	"time"
 	"syscall"
 
 	"github.com/alexbrainman/ps"
@@ -75,6 +76,7 @@ var (
 func (engine *Engine) killProcess(process Process) bool {
 	slog.Info("Killing Windows Job Object")
 	err := engine.ProcessTree.JobObject.Terminate(1)
+	time.Sleep(500 * time.Millisecond)
 	return err == nil
 }
 
