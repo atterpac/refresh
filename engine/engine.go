@@ -21,16 +21,17 @@ type Engine struct {
 }
 
 func (engine *Engine) Start() error {
-	engine.Config.Slog = newLogger(engine.Config.LogLevel)
-	engine.Config.externalSlog = false
-	slog.SetDefault(engine.Config.Slog)
+	config := engine.Config
+	config.Slog = newLogger(config.LogLevel)
+	config.externalSlog = false
+	slog.SetDefault(config.Slog)
 	slog.Info("Refresh Start")
-	if engine.Config.Ignore.IgnoreGit {
-		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
+	if config.Ignore.IgnoreGit {
+		config.ignoreMap.git = readGitIgnore(config.RootPath)
 	}
-	engine.Config.BackgroundStruct.process = engine.backgroundExec(engine.Config.BackgroundStruct.Cmd)
-	if engine.Config.BackgroundCallback != nil {
-		ok := engine.Config.BackgroundCallback()
+	config.BackgroundStruct.process = engine.startBackgroundProcess(config.BackgroundStruct.Cmd)
+	if config.BackgroundCallback != nil {
+		ok := config.BackgroundCallback()
 		if !ok {
 			slog.Error("Background Callback Failed")
 			return errors.New("Background Callback Failed")
@@ -45,21 +46,10 @@ func (engine *Engine) Start() error {
 	return <-trapChan
 }
 
-func (engine *Engine) sigTrap(ch chan error) {
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
-	go func() {
-		sig := <-signalChan
-		slog.Warn("Graceful Exit Requested", "signal", sig)
-		engine.Stop()
-		ch <- errors.New("Graceful Exit Requested")
-	}()
-}
-
 func (engine *Engine) Stop() {
 	engine.killProcess(engine.ProcessTree)
-	localProcess := Process{Process: engine.Config.BackgroundStruct.process}
-	engine.killProcess(localProcess)
+	processWrapper := Process{Process: engine.Config.BackgroundStruct.process}
+	engine.killProcess(processWrapper)
 	notify.Stop(engine.Chan)
 }
 
@@ -131,3 +121,13 @@ func (engine *Engine) AttachBackgroundCallback(callback func() bool) *Engine {
 	return engine
 }
 
+func (engine *Engine) sigTrap(ch chan error) {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	go func() {
+		sig := <-signalChan
+		slog.Warn("Graceful Exit Requested", "signal", sig)
+		engine.Stop()
+		ch <- errors.New("Graceful Exit Requested")
+	}()
+}

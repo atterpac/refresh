@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"bytes"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -46,7 +45,7 @@ func (ex *Execute) run(engine *Engine) error {
 	if ex.IsPrimary {
 		slog.Debug("Reloading Process")
 		time.Sleep(500 * time.Millisecond)
-		engine.ProcessTree.Process, err = engine.startPrimary(ex.Cmd)
+		engine.ProcessTree.Process, err = engine.startPrimaryProcess(ex.Cmd)
 		if err != nil {
 			slog.Error("Starting Run command", err, "command", ex.Cmd)
 			return err
@@ -94,24 +93,8 @@ func (ex *Execute) run(engine *Engine) error {
 	return nil
 }
 
-func (engine *Engine) backgroundExec(runString string) *os.Process {
-	commandSlice := generateExec(runString)
-	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
-	var out, err bytes.Buffer
-	// Let Process run in background
-	cmd.Stdout = &out
-	cmd.Stderr = &err
-	engine.spawnNewProcessGroup(cmd)
-	cmd.Start()
-	engine.setNewProcessGroup(cmd)
-	process := cmd.Process
-	slog.Debug("Complete Exec Command", "cmd", runString)
-	return process
-}
-
 func execFromString(runString string, block bool) (*os.Process, error) {
-	commandSlice := generateExec(runString)
-	cmd := exec.Command(commandSlice[0], commandSlice[1:]...)
+	cmd := generateExec(runString)
 	// Let Process run in background
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -127,6 +110,8 @@ func execFromString(runString string, block bool) (*os.Process, error) {
 }
 
 // Takes a string and splits it on spaces to create a slice of strings
-func generateExec(cmd string) []string {
-	return strings.Split(cmd, " ")
+func generateExec(cmd string) *exec.Cmd {
+	slice := strings.Split(cmd, " ")
+	cmdEx := exec.Command(slice[0], slice[1:]...)
+	return cmdEx
 }

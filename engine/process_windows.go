@@ -2,6 +2,7 @@
 package engine
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -16,6 +17,52 @@ type Process struct {
 	JobObject *ps.JobObject
 }
 
+func (engine *Engine) startPrimaryProcess(runString string) (*os.Process, error) {
+	var err error
+	slog.Debug("Starting Primary")
+	cmd := generateExec(runString)
+	//If an external slog is provided do not pipe stdout to the engine
+	if !engine.Config.externalSlog {
+		cmd.Stderr = os.Stderr
+		engine.ProcessLogPipe, err = cmd.StdoutPipe()
+		if err != nil {
+			slog.Error("Getting log pipe", "err", err.Error())
+			return nil, err
+		}
+	}
+	err = cmd.Start()
+	engine.createJobObject(cmd)
+	if err != nil {
+		slog.Error("Starting Primary", "err", err.Error())
+		return nil, err
+	}
+	slog.Debug("Starting log pipe")
+	go printSubProcess(engine.ProcessLogPipe)
+	if err != nil {
+		slog.Error("Starting Primary", "err", err.Error())
+		return nil, err
+	}
+	return cmd.Process, nil
+}
+
+
+func (engine *Engine) startBackgroundProcess(runString string) *os.Process {
+	cmd := generateExec(runString)
+	var out, err bytes.Buffer
+	// Let Process run in background
+	cmd.Stdout = &out
+	cmd.Stderr = &err
+	processErr := cmd.Start()
+	if processErr != nil {
+		slog.Error("Background Execute failed", "err", err)
+		return nil
+	}
+	engine.createJobObject(cmd)
+	process := cmd.Process
+	slog.Debug("Complete Exec Command", "cmd", runString)
+	return process
+}
+
 const PROCESS_ALL_ACCESS = 0x1F0FFF
 
 var (
@@ -28,6 +75,9 @@ var (
 // Window specific kill process
 func (engine *Engine) killProcess(process Process) bool {
 	osProcess := process.Process
+	if osProcess == nil {
+		return false
+	}
 	slog.Info("Killing process", "pid", osProcess.Pid)
 	err := engine.ProcessTree.JobObject.Terminate(1)
 	return err == nil
@@ -45,12 +95,12 @@ func openProcessHandle(pid int) (syscall.Handle, error) {
 	}
 	return syscall.Handle(handle), nil
 }
+//
+// func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
+// 	// Windows needs to spawn a new process group after its been started
+// }
 
-func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
-	// Windows needs to spawn a new process group after its been started
-}
-
-func (engine *Engine) setNewProcessGroup(cmd *exec.Cmd) {
+func (engine *Engine) createJobObject(cmd *exec.Cmd) {
 	var err error
 	if cmd.Process == nil {
 		slog.Error("Process is nil")
@@ -73,7 +123,3 @@ func (engine *Engine) setNewProcessGroup(cmd *exec.Cmd) {
 	}
 }
 
-
-func removePGID(cmd *exec.Cmd) {
-	// TODO: Implement
-}
