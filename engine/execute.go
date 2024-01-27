@@ -103,6 +103,7 @@ func (engine *Engine) backgroundExec(runString string) *os.Process {
 	cmd.Stderr = &err
 	engine.spawnNewProcessGroup(cmd)
 	cmd.Start()
+	engine.setNewProcessGroup(cmd)
 	process := cmd.Process
 	slog.Debug("Complete Exec Command", "cmd", runString)
 	return process

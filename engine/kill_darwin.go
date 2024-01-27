@@ -31,3 +31,7 @@ func (engine *Engine) killProcess(process Process) bool {
 func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 }
+
+func (engine *Engine) setNewProcessGroup(cmd *exec.Cmd) {
+	// Mac doesn't need to spawn a new process group after its been started
+}

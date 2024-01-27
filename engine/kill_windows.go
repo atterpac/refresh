@@ -47,9 +47,13 @@ func openProcessHandle(pid int) (syscall.Handle, error) {
 }
 
 func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
+	// Windows needs to spawn a new process group after its been started
+}
+
+func (engine *Engine) setNewProcessGroup(cmd *exec.Cmd) {
 	var err error
-	if cmd == nil {
-		slog.Error("No command found")
+	if cmd.Process == nil {
+		slog.Error("Process is nil")
 		return
 	}
 	pid := cmd.Process.Pid
@@ -68,6 +72,7 @@ func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
 		slog.Error(fmt.Sprintf("Adding process to job object: %s", err.Error()))
 	}
 }
+
 
 func removePGID(cmd *exec.Cmd) {
 	// TODO: Implement
