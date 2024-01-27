@@ -46,7 +46,7 @@ func openProcessHandle(pid int) (syscall.Handle, error) {
 	return syscall.Handle(handle), nil
 }
 
-func (engine *Engine) setPGID(cmd *exec.Cmd) {
+func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
 	var err error
 	if cmd == nil {
 		slog.Error("No command found")

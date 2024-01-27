@@ -28,7 +28,7 @@ func (engine *Engine) Start() error {
 	if engine.Config.Ignore.IgnoreGit {
 		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
 	}
-	engine.Config.BackgroundStruct.process = backgroundExec(engine.Config.BackgroundStruct.Cmd)
+	engine.Config.BackgroundStruct.process = engine.backgroundExec(engine.Config.BackgroundStruct.Cmd)
 	if engine.Config.BackgroundCallback != nil {
 		ok := engine.Config.BackgroundCallback()
 		if !ok {
