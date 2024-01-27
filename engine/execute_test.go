@@ -53,7 +53,7 @@ func TestRun(t *testing.T) {
 	}
 
 	// Test case 4: Primary
-	_, err = engine.startPrimary("echo 'Primary'")
+	_, err = engine.startPrimaryProcess("echo 'Primary'")
 	if err != nil {
 		t.Errorf("Error Executing Primary : %v", err)
 	}
