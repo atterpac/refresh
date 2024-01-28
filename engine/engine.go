@@ -22,9 +22,6 @@ type Engine struct {
 
 func (engine *Engine) Start() error {
 	config := engine.Config
-	config.Slog = newLogger(config.LogLevel)
-	config.externalSlog = false
-	slog.SetDefault(config.Slog)
 	slog.Info("Refresh Start")
 	if config.Ignore.IgnoreGit {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
@@ -92,6 +89,10 @@ func NewEngineFromTOML(confPath string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	config := engine.Config
+	config.Slog = newLogger(config.LogLevel)
+	config.externalSlog = false
+	slog.SetDefault(config.Slog)
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	engine.Config.externalSlog = false
 	err = engine.verifyConfig()
@@ -107,6 +108,10 @@ func NewEngineFromYAML(confPath string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	config := engine.Config
+	config.Slog = newLogger(config.LogLevel)
+	config.externalSlog = false
+	slog.SetDefault(config.Slog)
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	engine.Config.externalSlog = false
 	err = engine.verifyConfig()
