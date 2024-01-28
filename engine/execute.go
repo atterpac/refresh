@@ -62,6 +62,7 @@ func (ex *Execute) run(engine *Engine) error {
 			}
 			return nil
 		}
+		slog.Error("Primary Process Failed to Start")
 	}
 	switch ex.Cmd {
 	case "":

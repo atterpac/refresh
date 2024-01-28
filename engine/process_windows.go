@@ -1,20 +1,22 @@
 //go:build windows
+
 package engine
 
 import (
 	"bytes"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
-	"log/slog"
-	"time"
 	"syscall"
+	"time"
 
 	"github.com/alexbrainman/ps"
+	"github.com/pkg/errors"
 )
 
 type Process struct {
-	Process *os.Process
+	Process   *os.Process
 	JobObject *ps.JobObject
 }
 
@@ -33,11 +35,11 @@ func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 		}
 	}
 	err = cmd.Start()
-	engine.createJobObject(cmd)
 	if err != nil {
 		slog.Error("Starting Primary", "err", err.Error())
 		return process, err
 	}
+	process.JobObject, err = createJobObject(cmd)
 	process.Process = cmd.Process
 	slog.Debug("Starting log pipe")
 	go printSubProcess(engine.ProcessLogPipe)
@@ -49,27 +51,29 @@ func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 }
 
 func (engine *Engine) startBackgroundProcess(runString string) (Process, error) {
+	var process Process
+	var err error
 	cmd := generateExec(runString)
-	var out, err bytes.Buffer
+	var out, bufErr bytes.Buffer
 	// Let Process run in background
 	cmd.Stdout = &out
-	cmd.Stderr = &err
+	cmd.Stderr = &bufErr
 	processErr := cmd.Start()
 	if processErr != nil {
 		slog.Error("Background Execute failed", "err", err)
 		return Process{}, processErr
 	}
-	engine.createJobObject(cmd)
-	process := cmd.Process
+	process.JobObject, err = createJobObject(cmd)
+	process.Process = cmd.Process
 	slog.Debug("Complete Exec Command", "cmd", runString)
-	return Process{Process: process, JobObject: engine.ProcessTree.JobObject}, nil
+	return process, nil
 }
 
 const PROCESS_ALL_ACCESS = 0x1F0FFF
 
 var (
-	kernel32 = syscall.NewLazyDLL("kernel32.dll")
-	handle = kernel32.NewProc("OpenProcess")
+	kernel32    = syscall.NewLazyDLL("kernel32.dll")
+	handle      = kernel32.NewProc("OpenProcess")
 	openProcess = kernel32.NewProc("OpenProcess")
 	closeHandle = kernel32.NewProc("CloseHandle")
 )
@@ -77,7 +81,7 @@ var (
 // Window specific kill process
 func (engine *Engine) killProcess(process Process) bool {
 	slog.Info("Killing Windows Job Object")
-	err := engine.ProcessTree.JobObject.Terminate(1)
+	err := process.JobObject.Terminate(1)
 	time.Sleep(500 * time.Millisecond)
 	return err == nil
 }
@@ -94,31 +98,31 @@ func openProcessHandle(pid int) (syscall.Handle, error) {
 	}
 	return syscall.Handle(handle), nil
 }
+
 //
 // func (engine *Engine) spawnNewProcessGroup(cmd *exec.Cmd) {
 // 	// Windows needs to spawn a new process group after its been started
 // }
 
-func (engine *Engine) createJobObject(cmd *exec.Cmd) {
+func createJobObject(cmd *exec.Cmd) (*ps.JobObject, error) {
 	var err error
 	if cmd.Process == nil {
-		slog.Error("Process is nil")
-		return
+		return nil, errors.New("Process is nil")
 	}
-	pid := cmd.Process.Pid
-	slog.Info("Setting PGID", "pid", pid)
-	engine.ProcessTree.JobObject, err = ps.CreateJobObject("refresh")
+	job, err := ps.CreateJobObject("refresh")
 	if err != nil {
 		slog.Error(fmt.Sprintf("Creating job object: %s", err.Error()))
 	}
-	handle, err := openProcessHandle(pid)
+	handle, err := openProcessHandle(cmd.Process.Pid)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Opening process handle: %s", err.Error()))
+		return nil, err
 	}
-	err = engine.ProcessTree.JobObject.AddProcess(handle)
+	err = job.AddProcess(handle)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Adding process to job object: %s", err.Error()))
+		return nil, err
 	}
 	syscall.CloseHandle(handle)
+	return job, nil
 }
-
