@@ -12,11 +12,13 @@ import (
 
 type Process struct {
 	Process *os.Process
+	pgid int
 }
 
 // Start process with exec command and a root path to call it in
-func (engine *Engine) startPrimaryProcess(runString string) (*os.Process, error) {
+func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 	var err error
+	var process Process
 	slog.Debug("Starting Primary")
 	cmd := generateExec(runString)
 	//If an external slog is provided do not pipe stdout to the engine
@@ -25,39 +27,50 @@ func (engine *Engine) startPrimaryProcess(runString string) (*os.Process, error)
 		engine.ProcessLogPipe, err = cmd.StdoutPipe()
 		if err != nil {
 			slog.Error("Getting log pipe", "err", err.Error())
-			return nil, err
+			return process, err
 		}
 	}
 	attachNewProcessGroup(cmd)
 	err = cmd.Start()
 	if err != nil {
 		slog.Error("Starting Primary", "err", err.Error())
-		return nil, err
+		return process, err
 	}
 	slog.Debug("Starting log pipe")
 	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
 		slog.Error("Starting Primary", "err", err.Error())
-		return nil, err
+		return process, err
 	}
-	return cmd.Process, nil
+	process.Process = cmd.Process
+	process.pgid, err = syscall.Getpgid(cmd.Process.Pid)
+	if err != nil {
+		slog.Error("Getting process group id", "err", err.Error())
+		return process, err
+	}
+	return process, nil
 }
 
-
-func (engine *Engine) startBackgroundProcess(runString string) *os.Process {
+func (engine *Engine) startBackgroundProcess(runString string) (Process, error) {
 	cmd := generateExec(runString)
-	var out, err bytes.Buffer
+	var out, stdErr bytes.Buffer
 	cmd.Stdout = &out
-	cmd.Stderr = &err
+	cmd.Stderr = &stdErr
 	attachNewProcessGroup(cmd)
 	cmdErr := cmd.Start()
 	if cmdErr != nil {
-		slog.Error("Background Execute failed", "err", err)
-		return nil
+		slog.Error("Background Execute failed", "err", cmdErr)
+		return Process{}, cmdErr
 	}
-	process := cmd.Process
 	slog.Debug("Complete Exec Command", "cmd", runString)
-	return process
+	// Get PGID
+	pgid, err := syscall.Getpgid(cmd.Process.Pid)
+	if err != nil {
+		slog.Error("Getting process group id", "err", err.Error())
+		return Process{}, err
+	}
+	slog.Debug("Process group id", "pgid", pgid)
+	return Process{Process: cmd.Process, pgid: pgid}, nil
 }
 
 func (engine *Engine) killProcess(process Process) bool {
@@ -65,13 +78,8 @@ func (engine *Engine) killProcess(process Process) bool {
 	if osProcess == nil {
 		return false
 	}
-	slog.Debug("Killing process", "pid", osProcess.Pid)
-	pgid, err := syscall.Getpgid(osProcess.Pid)
-	if err != nil {
-		slog.Error("Getting process group id", "err", err.Error())
-		return false
-	}
-	err = syscall.Kill(-pgid, syscall.SIGKILL)
+	slog.Debug("Killing process")
+	err := syscall.Kill(-process.pgid, syscall.SIGKILL)
 	if err != nil {
 		slog.Error("Killing process", "err", err.Error())
 		return false

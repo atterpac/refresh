@@ -13,6 +13,7 @@ import (
 
 type Engine struct {
 	ProcessTree    Process
+	BgProcessTree  Process
 	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config" yaml:"config"`
@@ -21,12 +22,17 @@ type Engine struct {
 }
 
 func (engine *Engine) Start() error {
+	var err error
 	config := engine.Config
 	slog.Info("Refresh Start")
 	if config.Ignore.IgnoreGit {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
 	}
-	config.BackgroundStruct.process = engine.startBackgroundProcess(config.BackgroundStruct.Cmd)
+	engine.BgProcessTree, err = engine.startBackgroundProcess(config.BackgroundStruct.Cmd)
+	if err != nil {
+		slog.Error("Starting Background Process", "err", err.Error())
+		return err
+	}
 	if config.BackgroundCallback != nil {
 		ok := config.BackgroundCallback()
 		if !ok {
@@ -45,8 +51,7 @@ func (engine *Engine) Start() error {
 
 func (engine *Engine) Stop() {
 	engine.killProcess(engine.ProcessTree)
-	processWrapper := Process{Process: engine.Config.BackgroundStruct.process}
-	engine.killProcess(processWrapper)
+	engine.killProcess(engine.BgProcessTree)
 	notify.Stop(engine.Chan)
 }
 

@@ -66,8 +66,7 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) error {
 			}
 			// Continue with reload
 			relPath := getPath(ei.Path())
-			slog.Info(fmt.Sprintf("File Modified: %s", relPath))
-			slog.Info("Reloading process...")
+			slog.Info("File Modified...Reloading", "file", relPath)
 			engine.reloadProcess()
 		}
 	}

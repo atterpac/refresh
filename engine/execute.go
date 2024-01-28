@@ -36,16 +36,20 @@ func (ex *Execute) run(engine *Engine) error {
 	}
 	if ex.ChangeDir != "" {
 		restoreDir, err = os.Getwd()
-		slog.Debug("Change Directory Set", "WD", restoreDir)
+		slog.Debug("Change Directory Set", "dir", restoreDir)
 		if err != nil {
 			slog.Error("Getting working directory")
 		}
 		changeWorkingDirectory(ex.ChangeDir)
 	}
 	if ex.IsPrimary {
+		err := engine.kill()
+		if err != nil {
+			slog.Error("Killing Stale Process", "err", err.Error())
+		}
 		slog.Debug("Reloading Process")
 		time.Sleep(500 * time.Millisecond)
-		engine.ProcessTree.Process, err = engine.startPrimaryProcess(ex.Cmd)
+		engine.ProcessTree, err = engine.startPrimaryProcess(ex.Cmd)
 		if err != nil {
 			slog.Error("Starting Run command", err, "command", ex.Cmd)
 			return err
@@ -79,23 +83,21 @@ func (ex *Execute) run(engine *Engine) error {
 }
 
 func (engine *Engine) kill() error {
-		if firstRun {
-			firstRun = false
-			return nil
-		}
-		if engine.isRunning() {
-			slog.Debug("Killing Stale Version")
-			ok := engine.killProcess(engine.ProcessTree)
-			if !ok {
-				slog.Error("Releasing stale process")
-			}
-			if engine.ProcessLogPipe != nil {
-				slog.Debug("Closing log pipe")
-				engine.ProcessLogPipe.Close()
-				engine.ProcessLogPipe = nil
-			}
-}
-slog.Debug("Killing Stale Version")
+	if firstRun {
+		firstRun = false
+		return nil
+	}
+	slog.Debug("Killing Stale Version")
+	ok := engine.killProcess(engine.ProcessTree)
+	if !ok {
+		slog.Error("Releasing stale process")
+	}
+	if engine.ProcessLogPipe != nil {
+		slog.Debug("Closing log pipe")
+		engine.ProcessLogPipe.Close()
+		engine.ProcessLogPipe = nil
+	}
+	return nil
 }
 
 func execFromString(runString string, block bool) (*os.Process, error) {

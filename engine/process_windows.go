@@ -18,8 +18,9 @@ type Process struct {
 	JobObject *ps.JobObject
 }
 
-func (engine *Engine) startPrimaryProcess(runString string) (*os.Process, error) {
+func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 	var err error
+	var process Process
 	slog.Debug("Starting Primary")
 	cmd := generateExec(runString)
 	//If an external slog is provided do not pipe stdout to the engine
@@ -28,25 +29,26 @@ func (engine *Engine) startPrimaryProcess(runString string) (*os.Process, error)
 		engine.ProcessLogPipe, err = cmd.StdoutPipe()
 		if err != nil {
 			slog.Error("Getting log pipe", "err", err.Error())
-			return nil, err
+			return process, err
 		}
 	}
 	err = cmd.Start()
 	engine.createJobObject(cmd)
 	if err != nil {
 		slog.Error("Starting Primary", "err", err.Error())
-		return nil, err
+		return process, err
 	}
+	process.Process = cmd.Process
 	slog.Debug("Starting log pipe")
 	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
 		slog.Error("Starting Primary", "err", err.Error())
-		return nil, err
+		return process, err
 	}
-	return cmd.Process, nil
+	return process, nil
 }
 
-func (engine *Engine) startBackgroundProcess(runString string) *os.Process {
+func (engine *Engine) startBackgroundProcess(runString string) (Process, error) {
 	cmd := generateExec(runString)
 	var out, err bytes.Buffer
 	// Let Process run in background
@@ -55,12 +57,12 @@ func (engine *Engine) startBackgroundProcess(runString string) *os.Process {
 	processErr := cmd.Start()
 	if processErr != nil {
 		slog.Error("Background Execute failed", "err", err)
-		return nil
+		return Process{}, processErr
 	}
 	engine.createJobObject(cmd)
 	process := cmd.Process
 	slog.Debug("Complete Exec Command", "cmd", runString)
-	return process
+	return Process{Process: process, JobObject: engine.ProcessTree.JobObject}, nil
 }
 
 const PROCESS_ALL_ACCESS = 0x1F0FFF
