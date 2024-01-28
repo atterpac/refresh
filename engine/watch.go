@@ -27,48 +27,50 @@ func watchEvents(engine *Engine, e chan notify.EventInfo) error {
 	var debounceThreshold = time.Duration(engine.Config.Debounce) * time.Millisecond
 	for {
 		ei := <-e
-		eventInfo, ok := eventMap[ei.Event()]
-		if !ok {
-			slog.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
-			continue
-		}
-		// Callback handling
-		if engine.Config.Callback != nil {
-			event := CallbackMap[ei.Event()]
-			handle := engine.Config.Callback(&EventCallback{
-				Type: event,
-				Time: time.Now(),
-				Path: getPath(ei.Path()),
-			})
-			switch handle {
-			case EventContinue: // Continue with reload process as eventMap and ignore rules dictate
-			case EventBypass: // Bypass all rulesets and reload process
-				slog.Debug("Bypassing all rulesets and reloading process...")
+		go func(ei notify.EventInfo) {
+			eventInfo, ok := eventMap[ei.Event()]
+			if !ok {
+				slog.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
+				return
+			}
+			// Callback handling
+			if engine.Config.Callback != nil {
+				event := CallbackMap[ei.Event()]
+				handle := engine.Config.Callback(&EventCallback{
+					Type: event,
+					Time: time.Now(),
+					Path: getPath(ei.Path()),
+				})
+				switch handle {
+				case EventContinue: // Continue with reload process as eventMap and ignore rules dictate
+				case EventBypass: // Bypass all rulesets and reload process
+					slog.Debug("Bypassing all rulesets and reloading process...")
+					engine.reloadProcess()
+					return
+				case EventIgnore: // Ignore Event and continue with monitoring
+					return
+				default:
+				}
+			}
+			if eventInfo.Reload {
+				if engine.Config.Ignore.shouldIgnore(ei.Path()) {
+					slog.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String(), ei.Path()))
+					return
+				}
+				// Check if we should debounce
+				if checkDebounce(debounceTime, debounceThreshold) {
+					debounceTime = time.Now()
+					slog.Debug(fmt.Sprintf("Debounce Timer Start: %v", debounceTime))
+				} else {
+					slog.Debug(fmt.Sprintf("Debouncing file change: %s", ei.Path()))
+					return
+				}
+				// Continue with reload
+				relPath := getPath(ei.Path())
+				slog.Info("File Modified...Reloading", "file", relPath)
 				engine.reloadProcess()
-				continue
-			case EventIgnore: // Ignore Event and continue with monitoring
-				continue
-			default:
 			}
-		}
-		if eventInfo.Reload {
-			if engine.Config.Ignore.shouldIgnore(ei.Path()) {
-				slog.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String(), ei.Path()))
-				continue
-			}
-			// Check if we should debounce
-			if checkDebounce(debounceTime, debounceThreshold) {
-				debounceTime = time.Now()
-				slog.Debug(fmt.Sprintf("Debounce Timer Start: %v", debounceTime))
-			} else {
-				slog.Debug(fmt.Sprintf("Debouncing file change: %s", ei.Path()))
-				continue
-			}
-			// Continue with reload
-			relPath := getPath(ei.Path())
-			slog.Info("File Modified...Reloading", "file", relPath)
-			engine.reloadProcess()
-		}
+		}(ei)
 	}
 }
 
