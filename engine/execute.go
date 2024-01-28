@@ -63,6 +63,22 @@ func (ex *Execute) run(engine *Engine) error {
 	case "":
 		return nil
 	case "KILL_STALE":
+		slog.Debug("Kill_STALE depreciated")
+	default:
+		ex.process, err = execFromString(ex.Cmd, ex.IsBlocking)
+		if err != nil {
+			slog.Error("Running Execute", "command", ex.Cmd, "error", err.Error())
+		}
+		slog.Debug("Complete Exec Command", "cmd", ex.Cmd)
+	}
+	if restoreDir != "" {
+		slog.Info("Restoring working Dir")
+		changeWorkingDirectory(restoreDir)
+	}
+	return nil
+}
+
+func (engine *Engine) kill() error {
 		if firstRun {
 			firstRun = false
 			return nil
@@ -78,19 +94,8 @@ func (ex *Execute) run(engine *Engine) error {
 				engine.ProcessLogPipe.Close()
 				engine.ProcessLogPipe = nil
 			}
-		}
-	default:
-		ex.process, err = execFromString(ex.Cmd, ex.IsBlocking)
-		if err != nil {
-			slog.Error("Running Execute", "command", ex.Cmd, "error", err.Error())
-		}
-		slog.Debug("Complete Exec Command", "cmd", ex.Cmd)
-	}
-	if restoreDir != "" {
-		slog.Info("Restoring working Dir")
-		changeWorkingDirectory(restoreDir)
-	}
-	return nil
+}
+slog.Debug("Killing Stale Version")
 }
 
 func execFromString(runString string, block bool) (*os.Process, error) {

@@ -113,10 +113,10 @@ func (engine *Engine) createJobObject(cmd *exec.Cmd) {
 	if err != nil {
 		slog.Error(fmt.Sprintf("Opening process handle: %s", err.Error()))
 	}
-	defer syscall.CloseHandle(handle)
 	err = engine.ProcessTree.JobObject.AddProcess(handle)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Adding process to job object: %s", err.Error()))
 	}
+	syscall.CloseHandle(handle)
 }
 
