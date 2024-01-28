@@ -68,7 +68,7 @@ func (ex *Execute) run(engine *Engine) error {
 	case "":
 		return nil
 	case "KILL_STALE":
-		slog.Debug("Kill_STALE depreciated")
+		slog.Debug("Kill_STALE depreciated primary will be killed prior to next run")
 	default:
 		ex.process, err = execFromString(ex.Cmd, ex.IsBlocking)
 		if err != nil {

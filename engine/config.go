@@ -108,23 +108,14 @@ func (engine *Engine) verifyExecute() error {
 			}
 		}
 	} else {
-		var kill bool
 		var refresh bool
 		for _, exe := range engine.Config.ExecList {
 			switch exe {
 			case "REFRESH":
 				refresh = true
-			case "KILL_STALE":
-				kill = true
 			default:
 				continue
 			}
-		}
-		if !kill && !refresh {
-			return errors.New("Execute List must contain `KILL_STALE` and `REFRESH`")
-		}
-		if !kill {
-			return errors.New("Execute List must contain `KILL_STALE`")
 		}
 		if !refresh {
 			return errors.New("Execute List must contain `REFRESH`")
