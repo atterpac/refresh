@@ -8,8 +8,8 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/alexbrainman/ps"
 	"github.com/pkg/errors"
@@ -17,6 +17,7 @@ import (
 
 type Process struct {
 	Process   *os.Process
+	pid       int
 	JobObject *ps.JobObject
 }
 
@@ -39,8 +40,9 @@ func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 		slog.Error("Starting Primary", "err", err.Error())
 		return process, err
 	}
-	process.JobObject, err = createJobObject(cmd)
+	process.JobObject, err = createJobObject(cmd, "refresh_primary")
 	process.Process = cmd.Process
+	process.pid = cmd.Process.Pid
 	slog.Debug("Starting log pipe")
 	go printSubProcess(engine.ProcessLogPipe)
 	if err != nil {
@@ -63,8 +65,9 @@ func (engine *Engine) startBackgroundProcess(runString string) (Process, error) 
 		slog.Error("Background Execute failed", "err", err)
 		return Process{}, processErr
 	}
-	process.JobObject, err = createJobObject(cmd)
+	process.JobObject, err = createJobObject(cmd, "refresh_background")
 	process.Process = cmd.Process
+	process.pid = cmd.Process.Pid
 	slog.Debug("Complete Exec Command", "cmd", runString)
 	return process, nil
 }
@@ -80,9 +83,8 @@ var (
 
 // Window specific kill process
 func (engine *Engine) killProcess(process Process) bool {
-	slog.Info("Killing Windows Job Object")
-	err := process.JobObject.Terminate(1)
-	time.Sleep(500 * time.Millisecond)
+	slog.Info("Killing PID", "pid", process.pid)
+	err := taskKill(process.pid)
 	return err == nil
 }
 
@@ -104,12 +106,12 @@ func openProcessHandle(pid int) (syscall.Handle, error) {
 // 	// Windows needs to spawn a new process group after its been started
 // }
 
-func createJobObject(cmd *exec.Cmd) (*ps.JobObject, error) {
+func createJobObject(cmd *exec.Cmd, name string) (*ps.JobObject, error) {
 	var err error
 	if cmd.Process == nil {
 		return nil, errors.New("Process is nil")
 	}
-	job, err := ps.CreateJobObject("refresh")
+	job, err := ps.CreateJobObject(name)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Creating job object: %s", err.Error()))
 	}
@@ -118,6 +120,7 @@ func createJobObject(cmd *exec.Cmd) (*ps.JobObject, error) {
 		slog.Error(fmt.Sprintf("Opening process handle: %s", err.Error()))
 		return nil, err
 	}
+	slog.Debug("Adding process to job object", "pid", cmd.Process.Pid, "job", name)
 	err = job.AddProcess(handle)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Adding process to job object: %s", err.Error()))
@@ -125,4 +128,15 @@ func createJobObject(cmd *exec.Cmd) (*ps.JobObject, error) {
 	}
 	syscall.CloseHandle(handle)
 	return job, nil
+}
+
+func taskKill(pid int) error {
+	kill := exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(pid))
+	err := kill.Run()
+	if err != nil {
+		slog.Error("Error killing process", "pid", pid, "err", err.Error())
+		return err
+	}
+	slog.Info("Process successfull killed", "pid", pid)
+	return nil
 }
