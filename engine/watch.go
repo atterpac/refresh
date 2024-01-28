@@ -99,4 +99,3 @@ func stripCurrentDirectory(fullPath, currentDirectory string) (string, error) {
 
 	return relativePath, nil
 }
-

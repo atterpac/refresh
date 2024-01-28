@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"log/slog"
 	"path/filepath"
 	"strings"
 )
@@ -22,37 +21,32 @@ type ignoreMap struct {
 
 // Runs all ignore checks to decide if reload should happen
 // func (i *ignoreMap) checkIgnore(path string) bool {
-	// slog.Debug("Checking Ignore")
-	// basePath := filepath.Base(path)
-	// if isTmp(basePath) {
-	// 	return true
-	// }
-	// if isIgnoreDir(path, i.dir) {
-	// 	return true
-	// }
-	// dir := checkIgnoreMap(path, i.dir)
-	// file := checkIgnoreMap(path, i.file)
-	// git := checkIgnoreMap(path, i.git)
-	// return dir || file || git
+// slog.Debug("Checking Ignore")
+// basePath := filepath.Base(path)
+// if isTmp(basePath) {
+// 	return true
+// }
+// if isIgnoreDir(path, i.dir) {
+// 	return true
+// }
+// dir := checkIgnoreMap(path, i.dir)
+// file := checkIgnoreMap(path, i.file)
+// git := checkIgnoreMap(path, i.git)
+// return dir || file || git
 // 	return i.shouldIgnore(path)
 // }
 
 func (i *Ignore) shouldIgnore(path string) bool {
-	slog.Debug("New Ignore Check")
 	if isIgnoreDir(path, i.Dir) {
-		slog.Debug("Ignore Dir")
 		return true
-	} 
+	}
 	if patternMatch(path, i.Dir) {
-		slog.Debug("Matched Dir")
 		return true
 	}
 	if patternMatch(path, i.File) {
-		slog.Debug("Matched File")
 		return true
 	}
 	if i.isWatchedExtension(path) {
-		slog.Debug("Watched Extension")
 		return false
 	}
 	return true
@@ -61,6 +55,7 @@ func (i *Ignore) shouldIgnore(path string) bool {
 func (i *Ignore) isWatchedExtension(path string) bool {
 	return patternMatch(path, i.WatchedExten)
 }
+
 // func checkIgnoreMap(path string, rules map[string]struct{}) bool {
 // 	slog.Debug(fmt.Sprintf("Checking map: %v for %s", rules, path))
 // 	_, ok := rules[path]
@@ -85,7 +80,7 @@ func isTmp(path string) bool {
 func isIgnoreDir(path string, rules []string) bool {
 	dirs := strings.Split(path, string(filepath.Separator))
 	for _, dir := range dirs {
-		for _, rule := range rules {	
+		for _, rule := range rules {
 			if dir == rule {
 				return true
 			}
