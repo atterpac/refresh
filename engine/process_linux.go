@@ -54,12 +54,12 @@ func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 }
 
 func (engine *Engine) startBackgroundProcess(runString string) (Process, error) {
+	var err error
 	var process Process
 	cmd := generateExec(runString)
 	// Let Process run in background
 	cmd.Stdout = &process.Output
 	cmd.Stderr = &process.Error
-	err := cmd.Start()
 	attachNewProcessGroup(cmd)
 	cmdErr := cmd.Start()
 	if cmdErr != nil {
@@ -68,13 +68,14 @@ func (engine *Engine) startBackgroundProcess(runString string) (Process, error) 
 	}
 	slog.Debug("Complete Exec Command", "cmd", runString)
 	// Get PGID
-	pgid, err := syscall.Getpgid(cmd.Process.Pid)
+	process.pgid, err = syscall.Getpgid(cmd.Process.Pid)
+	process.Process = cmd.Process
 	if err != nil {
 		slog.Error("Getting process group id", "err", err.Error())
 		return Process{}, err
 	}
-	slog.Debug("Process group id", "pgid", pgid)
-	return Process{Process: cmd.Process, pgid: pgid}, nil
+	slog.Debug("Process group id", "pgid", process.pgid)
+	return process, nil
 }
 
 func (engine *Engine) killProcess(process Process) bool {
