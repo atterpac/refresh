@@ -4,15 +4,10 @@ package engine
 
 import (
 	"bytes"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
 	"strconv"
-	"syscall"
-
-	"github.com/alexbrainman/ps"
-	"github.com/pkg/errors"
 )
 
 type Process struct {
@@ -56,10 +51,9 @@ func (engine *Engine) startBackgroundProcess(runString string) (Process, error) 
 	var process Process
 	var err error
 	cmd := generateExec(runString)
-	var out, bufErr bytes.Buffer
 	// Let Process run in background
-	process.Output = cmd.Stdout
-	process.Error = cmd.Stderr
+	cmd.Stdout = &process.Output
+	cmd.Stderr = &process.Error
 	processErr := cmd.Start()
 	if processErr != nil {
 		slog.Error("Background Execute failed", "err", err)
