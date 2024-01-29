@@ -49,13 +49,13 @@ func (ex *Execute) run(engine *Engine) error {
 		}
 		slog.Debug("Reloading Process")
 		time.Sleep(500 * time.Millisecond)
-		engine.ProcessTree, err = engine.startPrimaryProcess(ex.Cmd)
+		engine.PrimaryProcess, err = engine.startPrimaryProcess(ex.Cmd)
 		if err != nil {
 			slog.Error("Starting Run command", err, "command", ex.Cmd)
 			return err
 		}
-		if engine.ProcessTree.Process != nil {
-			slog.Info("Primary Process Started", "pid", engine.ProcessTree.Process.Pid)
+		if engine.PrimaryProcess.Process != nil {
+			slog.Info("Primary Process Started", "pid", engine.PrimaryProcess.Process.Pid)
 			if restoreDir != "" {
 				slog.Info("Restoring working Dir")
 				changeWorkingDirectory(restoreDir)
@@ -89,7 +89,7 @@ func (engine *Engine) kill() error {
 		return nil
 	}
 	slog.Debug("Killing Stale Version")
-	ok := engine.killProcess(engine.ProcessTree)
+	ok := engine.killProcess(engine.PrimaryProcess)
 	if !ok {
 		slog.Error("Releasing stale process")
 	}

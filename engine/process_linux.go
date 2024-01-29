@@ -13,6 +13,8 @@ import (
 type Process struct {
 	Process *os.Process
 	pgid int
+	Output  bytes.Buffer
+	Error   bytes.Buffer
 }
 
 // Start process with exec command and a root path to call it in
@@ -52,10 +54,12 @@ func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 }
 
 func (engine *Engine) startBackgroundProcess(runString string) (Process, error) {
+	var process Process
 	cmd := generateExec(runString)
-	var out, stdErr bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &stdErr
+	// Let Process run in background
+	cmd.Stdout = &process.Output
+	cmd.Stderr = &process.Error
+	err := cmd.Start()
 	attachNewProcessGroup(cmd)
 	cmdErr := cmd.Start()
 	if cmdErr != nil {

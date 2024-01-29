@@ -21,10 +21,10 @@ func (engine *Engine) reloadProcess() {
 
 // Check if a child process is running
 func (engine *Engine) isRunning() bool {
-	if engine.ProcessTree.Process == nil {
+	if engine.PrimaryProcess.Process == nil {
 		return false
 	}
-	foundProcess, err := os.FindProcess(int(engine.ProcessTree.Process.Pid))
+	foundProcess, err := os.FindProcess(int(engine.PrimaryProcess.Process.Pid))
 	if err != nil {
 		slog.Error(fmt.Sprintf("Finding process: %s", err.Error()))
 		return false
