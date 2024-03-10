@@ -20,6 +20,7 @@ func (engine *Engine) watch() {
 		slog.Error(fmt.Sprintf("Creating watcher: %s", err.Error()))
 	}
 	watchEvents(engine, engine.Chan)
+	firstRun = false
 }
 
 func watchEvents(engine *Engine, e chan notify.EventInfo) error {

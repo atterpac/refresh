@@ -31,13 +31,20 @@ func (engine *Engine) startPrimaryProcess(runString string) (Process, error) {
 		}
 	}
 	attachNewProcessGroup(cmd)
-	err = cmd.Start()
-	if err != nil {
-		slog.Error("Starting Primary", "err", err.Error())
-		return process, err
-	}
-	slog.Debug("Starting log pipe")
-	go printSubProcess(engine.ProcessLogPipe)
+	cmdDone := make(chan error, 1)
+	go func() {
+		err = cmd.Start()
+		if err != nil {
+			slog.Error("Starting Primary", "err", err.Error())
+			cmdDone <- err
+		}
+		slog.Debug("Starting log pipe")
+		go printSubProcess(engine.ProcessLogPipe)
+
+		cmdDone <- cmd.Wait()
+	}()
+
+	err = <-cmdDone
 	if err != nil {
 		slog.Error("Starting Primary", "err", err.Error())
 		return process, err

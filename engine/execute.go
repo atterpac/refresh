@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-	"time"
 )
 
 type Execute struct {
@@ -27,77 +26,70 @@ var REFRESH_EXEC = "REFRESH"
 var KILL_EXEC = "KILL_STALE"
 var firstRun = true
 
-func (ex *Execute) run(engine *Engine) error {
-	slog.Info("Running Execute", "command", ex.Cmd)
-	var err error
-	var restoreDir string = ""
-	if ex.Cmd == "" {
-		return nil
-	}
-	if ex.ChangeDir != "" {
-		restoreDir, err = os.Getwd()
-		slog.Debug("Change Directory Set", "dir", restoreDir)
-		if err != nil {
-			slog.Error("Getting working directory")
-		}
-		changeWorkingDirectory(ex.ChangeDir)
-	}
-	if ex.IsPrimary {
-		err := engine.kill()
-		if err != nil {
-			slog.Error("Killing Stale Process", "err", err.Error())
-		}
-		slog.Debug("Reloading Process")
-		time.Sleep(500 * time.Millisecond)
-		engine.PrimaryProcess, err = engine.startPrimaryProcess(ex.Cmd)
-		if err != nil {
-			slog.Error("Starting Run command", err, "command", ex.Cmd)
-			return err
-		}
-		if engine.PrimaryProcess.Process != nil {
-			slog.Info("Primary Process Started", "pid", engine.PrimaryProcess.Process.Pid)
-			if restoreDir != "" {
-				slog.Info("Restoring working Dir")
-				changeWorkingDirectory(restoreDir)
-			}
-			return nil
-		}
-		slog.Error("Primary Process Failed to Start")
-	}
-	switch ex.Cmd {
-	case "":
-		return nil
-	case "KILL_STALE":
-		slog.Debug("Kill_STALE depreciated primary will be killed prior to next run")
-	default:
-		ex.process, err = execFromString(ex.Cmd, ex.IsBlocking)
-		if err != nil {
-			slog.Error("Running Execute", "command", ex.Cmd, "error", err.Error())
-		}
-		slog.Debug("Complete Exec Command", "cmd", ex.Cmd)
-	}
-	if restoreDir != "" {
-		slog.Info("Restoring working Dir")
-		changeWorkingDirectory(restoreDir)
-	}
-	return nil
-}
+// func (ex *Execute) run(engine *Engine) error {
+// 	slog.Info("Running Execute", "command", ex.Cmd)
+// 	var err error
+// 	var restoreDir string = ""
+// 	if ex.Cmd == "" {
+// 		return nil
+// 	}
+// 	if ex.ChangeDir != "" {
+// 		restoreDir, err = os.Getwd()
+// 		slog.Debug("Change Directory Set", "dir", restoreDir)
+// 		if err != nil {
+// 			slog.Error("Getting working directory")
+// 		}
+// 		changeWorkingDirectory(ex.ChangeDir)
+// 	}
+// 	if ex.IsPrimary {
+// 		err := engine.kill()
+// 		if err != nil {
+// 			slog.Error("Killing Stale Process", "err", err.Error())
+// 		}
+// 		slog.Debug("Reloading Process")
+// 		time.Sleep(500 * time.Millisecond)
+// 		processKey, err := engine.startPrimaryProcess(ex.Cmd)
+// 		if err != nil {
+// 			slog.Error("Starting Run command", "err", err, "command", ex.Cmd)
+// 			return err
+// 		}
+// 		process, ok := engine.ProcessMap[processKey]
+// 		if !ok {
+// 			slog.Error("Primary Process Failed to start")
+// 			return errors.New("Primary Process Failed to start")
+// 		}
+// 		slog.Info("Primary Process Started", "pid", process.Process.Pid)
+// 		if restoreDir != "" {
+// 			slog.Info("Restoring working Dir")
+// 			changeWorkingDirectory(restoreDir)
+// 		}
+// 		slog.Error("Primary Process Failed to Start")
+// 	}
+// 	switch ex.Cmd {
+// 	case "":
+// 		return nil
+// 	case "KILL_STALE":
+// 		slog.Debug("Kill_STALE depreciated primary will be killed prior to next run")
+// 	default:
+// 		ex.process, err = execFromString(ex.Cmd, ex.IsBlocking)
+// 		if err != nil {
+// 			slog.Error("Running Execute", "command", ex.Cmd, "error", err.Error())
+// 		}
+// 		slog.Debug("Complete Exec Command", "cmd", ex.Cmd)
+// 	}
+// 	if restoreDir != "" {
+// 		slog.Info("Restoring working Dir")
+// 		changeWorkingDirectory(restoreDir)
+// 	}
+// 	return nil
+// }
 
 func (engine *Engine) kill() error {
 	if firstRun {
 		firstRun = false
 		return nil
 	}
-	slog.Debug("Killing Stale Version")
-	ok := engine.killProcess(engine.PrimaryProcess)
-	if !ok {
-		slog.Error("Releasing stale process")
-	}
-	if engine.ProcessLogPipe != nil {
-		slog.Debug("Closing log pipe")
-		engine.ProcessLogPipe.Close()
-		engine.ProcessLogPipe = nil
-	}
+	engine.ProcessManager.KillProcesses(true)
 	return nil
 }
 
@@ -123,3 +115,11 @@ func generateExec(cmd string) *exec.Cmd {
 	cmdEx := exec.Command(slice[0], slice[1:]...)
 	return cmdEx
 }
+
+func (e *Engine) generateProcess() {
+	e.ProcessManager.AddProcess(e.Config.BackgroundStruct.Cmd, e.Config.BackgroundStruct.IsBlocking, e.Config.BackgroundStruct.IsPrimary, true)
+	for _, ex := range e.Config.ExecStruct {
+		e.ProcessManager.AddProcess(ex.Cmd, ex.IsBlocking, ex.IsPrimary, false)
+	}
+}
+

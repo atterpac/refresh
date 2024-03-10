@@ -19,27 +19,17 @@ type Engine struct {
 	Config         Config `toml:"config" yaml:"config"`
 	ProcessLogFile *os.File
 	ProcessLogPipe io.ReadCloser
+	ProcessManager *ProcessManager
 }
 
 func (engine *Engine) Start() error {
-	var err error
 	config := engine.Config
 	slog.Info("Refresh Start")
 	if config.Ignore.IgnoreGit {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
 	}
-	engine.BgProcess, err = engine.startBackgroundProcess(config.BackgroundStruct.Cmd)
-	if err != nil {
-		slog.Error("Starting Background Process", "err", err.Error())
-		return err
-	}
-	if config.BackgroundCallback != nil {
-		ok := config.BackgroundCallback()
-		if !ok {
-			slog.Error("Background Callback Failed")
-			return errors.New("Background Callback Failed")
-		}
-	}
+	engine.ProcessManager = NewProcessManager()
+	engine.generateProcess()
 	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
 	time.Sleep(waitTime)
 	go engine.reloadProcess()
@@ -50,8 +40,7 @@ func (engine *Engine) Start() error {
 }
 
 func (engine *Engine) Stop() {
-	engine.killProcess(engine.PrimaryProcess)
-	engine.killProcess(engine.BgProcess)
+	engine.ProcessManager.KillProcesses(false)
 	notify.Stop(engine.Chan)
 }
 
