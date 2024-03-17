@@ -17,7 +17,7 @@ func (e *Engine) StartProcesses() {
 		slog.Warn("No Processes to Start")
 		return
 	}
-	slog.Warn("Starting Processes", "count", len(pm.processes))
+	slog.Info("Starting Processes", "count", len(pm.processes))
 	for _, p := range pm.processes {
 		if p.Exec == "KILL_STALE" {
 			continue
@@ -68,7 +68,7 @@ func (pm *ProcessManager) KillProcesses(ignoreBackground bool) {
 		if p.pgid == 0 {
 			continue
 		}
-		slog.Info("Killing PGID", "pgid", p.pgid, "exec", p.Exec)
+		slog.Debug("Killing PGID", "pgid", p.pgid, "exec", p.Exec)
 		err := syscall.Kill(-p.pgid, syscall.SIGKILL)
 		if err != nil {
 			slog.Debug("Process cannot be killed", "exec", p.Exec, "err", err)

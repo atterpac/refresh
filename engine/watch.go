@@ -58,6 +58,7 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 		currentTime := time.Now()
 		if currentTime.Sub(em.lastEventTime) >= em.debounceThreshold {
 			slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+			slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
 			em.engine.StartProcesses()
 			em.lastEventTime = currentTime
 		} else {
