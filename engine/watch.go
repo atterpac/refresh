@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -10,93 +9,93 @@ import (
 	"github.com/rjeczalik/notify"
 )
 
+type EventManager struct {
+	engine            *Engine
+	lastEventTime     time.Time
+	debounceThreshold time.Duration
+	debounceTimer     *time.Timer
+}
+
+func NewEventManager(engine *Engine, debounce int) *EventManager {
+	em := &EventManager{
+		engine:            engine,
+		debounceThreshold: time.Duration(debounce) * time.Millisecond,
+	}
+	return em
+}
+
+func (em *EventManager) HandleEvent(ei notify.EventInfo) {
+	eventInfo, ok := eventMap[ei.Event()]
+	if !ok {
+		slog.Error("Unknown event", "event", ei.Event())
+		return
+	}
+	if em.engine.Config.Callback != nil {
+		event := CallbackMap[ei.Event()]
+		handle := em.engine.Config.Callback(&EventCallback{
+			Type: event,
+			Path: getPath(ei.Path()),
+			Time: time.Now(),
+		})
+		switch handle {
+		case EventContinue:
+			// Continue
+		case EventBypass:
+			slog.Debug("Bypassing event", "event", ei.Event(), "path", ei.Path())
+			return
+		case EventIgnore:
+			slog.Debug("Ignoring event", "event", ei.Event(), "path", ei.Path())
+			return
+		default:
+		}
+	}
+	if eventInfo.Reload {
+		if em.engine.Config.Ignore.shouldIgnore(ei.Path()) {
+			slog.Debug("Ignoring event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+			return
+		}
+		slog.Debug("Event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+		currentTime := time.Now()
+		if currentTime.Sub(em.lastEventTime) >= em.debounceThreshold {
+			slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+			em.engine.StartProcesses()
+			em.lastEventTime = currentTime
+		} else {
+			slog.Debug("Debouncing event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+		}
+	}
+}
+
 func (engine *Engine) watch() {
-	slog.Info("Watching for file changes...")
-	// Create Channel for Events
+	slog.Info("Watching", "path", engine.Config.RootPath)
+	eventManager := NewEventManager(engine, engine.Config.Debounce)
 	engine.Chan = make(chan notify.EventInfo, 1)
 	defer notify.Stop(engine.Chan)
-	// Mount watcher on route directory and subdirectories
-	if err := notify.Watch("./...", engine.Chan, notify.All); err != nil {
-		slog.Error(fmt.Sprintf("Creating watcher: %s", err.Error()))
-	}
-	watchEvents(engine, engine.Chan)
-}
 
-func watchEvents(engine *Engine, e chan notify.EventInfo) error {
-	var debounceTime time.Time
-	var debounceThreshold = time.Duration(engine.Config.Debounce) * time.Millisecond
+	if err := notify.Watch(engine.Config.RootPath, engine.Chan, notify.All); err != nil {
+		slog.Error("Watch Error", "err", err.Error())
+		return
+	}
+
 	for {
-		ei := <-e
-		go func(ei notify.EventInfo) {
-			eventInfo, ok := eventMap[ei.Event()]
-			if !ok {
-				slog.Error(fmt.Sprintf("Unknown Event: %s", ei.Event()))
-				return
-			}
-			// Callback handling
-			if engine.Config.Callback != nil {
-				event := CallbackMap[ei.Event()]
-				handle := engine.Config.Callback(&EventCallback{
-					Type: event,
-					Time: time.Now(),
-					Path: getPath(ei.Path()),
-				})
-				switch handle {
-				case EventContinue: // Continue with reload process as eventMap and ignore rules dictate
-				case EventBypass: // Bypass all rulesets and reload process
-					slog.Debug("Bypassing all rulesets and reloading process...")
-					engine.reloadProcess()
-					return
-				case EventIgnore: // Ignore Event and continue with monitoring
-					return
-				default:
-				}
-			}
-			if eventInfo.Reload {
-				if engine.Config.Ignore.shouldIgnore(ei.Path()) {
-					slog.Debug(fmt.Sprintf("Ignoring %s change: %s", ei.Event().String(), ei.Path()))
-					return
-				}
-				// Check if we should debounce
-				if checkDebounce(debounceTime, debounceThreshold) {
-					debounceTime = time.Now()
-					slog.Debug(fmt.Sprintf("Debounce Timer Start: %v", debounceTime))
-				} else {
-					slog.Debug(fmt.Sprintf("Debouncing file change: %s", ei.Path()))
-					return
-				}
-				// Continue with reload
-				relPath := getPath(ei.Path())
-				slog.Info("File Modified...Reloading", "file", relPath)
-				engine.reloadProcess()
-			}
-		}(ei)
+		select {
+		case ei := <-engine.Chan:
+			eventManager.HandleEvent(ei)
+		}
 	}
-}
 
-func checkDebounce(debounceTime time.Time, debounceThreshold time.Duration) bool {
-	return time.Now().After(debounceTime.Add(debounceThreshold))
 }
 
 func getPath(path string) string {
 	wd, err := os.Getwd()
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error getting working directory: %s", err.Error()))
+		slog.Error("Getting working directory")
 		return ""
 	}
-	relPath, err := stripCurrentDirectory(path, wd)
+	relPath, err := filepath.Rel(wd, path)
 	if err != nil {
-		slog.Error(fmt.Sprintf("Error stripping current directory: %s", err.Error()))
+		slog.Error("Getting relative path")
 		return ""
 	}
 	return relPath
-}
-
-func stripCurrentDirectory(fullPath, currentDirectory string) (string, error) {
-	relativePath, err := filepath.Rel(currentDirectory, fullPath)
-	if err != nil {
-		return "", err
-	}
-
-	return relativePath, nil
 }

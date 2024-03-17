@@ -62,7 +62,6 @@ func (engine *Engine) StringtoConfigYAML(yamlString string) error {
 	return nil
 }
 
-
 func (engine *Engine) StringtoConfigTOML(tomlString string) error {
 	err := yaml.Unmarshal([]byte(tomlString), &engine)
 	if err != nil {
@@ -87,6 +86,7 @@ func (engine *Engine) verifyConfig() error {
 	slog.Debug("Config Verified")
 	// Change directory executes are called in to match root directory
 	cleaned := cleanDirectory(engine.Config.RootPath)
+	cleaned = cleaned + "/..."
 	slog.Info("Changing Working Directory", "dir", cleaned)
 	changeWorkingDirectory(cleaned)
 	return nil
@@ -175,4 +175,3 @@ func changeWorkingDirectory(path string) {
 		slog.Error("Setting new directory", "dir", path)
 	}
 }
-
