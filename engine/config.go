@@ -86,7 +86,6 @@ func (engine *Engine) verifyConfig() error {
 	slog.Debug("Config Verified")
 	// Change directory executes are called in to match root directory
 	cleaned := cleanDirectory(engine.Config.RootPath)
-	cleaned = cleaned + "/..."
 	slog.Info("Changing Working Directory", "dir", cleaned)
 	changeWorkingDirectory(cleaned)
 	return nil

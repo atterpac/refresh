@@ -72,7 +72,7 @@ func (engine *Engine) watch() {
 	engine.Chan = make(chan notify.EventInfo, 1)
 	defer notify.Stop(engine.Chan)
 
-	if err := notify.Watch(engine.Config.RootPath, engine.Chan, notify.All); err != nil {
+	if err := notify.Watch(engine.Config.RootPath+"/...", engine.Chan, notify.All); err != nil {
 		slog.Error("Watch Error", "err", err.Error())
 		return
 	}
