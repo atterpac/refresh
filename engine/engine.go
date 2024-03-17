@@ -32,7 +32,8 @@ func (engine *Engine) Start() error {
 	engine.generateProcess()
 	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
 	time.Sleep(waitTime)
-	go engine.reloadProcess()
+	engine.StartProcesses()
+	firstRun = false
 	trapChan := make(chan error)
 	go engine.sigTrap(trapChan)
 	go engine.watch()
