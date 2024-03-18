@@ -1,15 +1,13 @@
 package engine
 
 import (
-	"fmt"
-	"log/slog"
 	"unicode/utf8"
 )
 
 func patternMatch(path string, PatternMap []string) bool {
 	for _, pattern := range PatternMap {
 		if patternCompare(pattern, path) {
-			slog.Debug(fmt.Sprintf("Ignore Pattern Match: %s with %s", path, pattern))
+			// slog.Debug(fmt.Sprintf("Ignore Pattern Match: %s with %s", path, pattern))
 			return true
 		}
 	}

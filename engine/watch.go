@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -14,12 +15,17 @@ type EventManager struct {
 	lastEventTime     time.Time
 	debounceThreshold time.Duration
 	debounceTimer     *time.Timer
+	ctx               context.Context
+	cancel            context.CancelFunc
 }
 
 func NewEventManager(engine *Engine, debounce int) *EventManager {
+	ctx, cancel := context.WithCancel(context.Background())
 	em := &EventManager{
 		engine:            engine,
 		debounceThreshold: time.Duration(debounce) * time.Millisecond,
+		ctx:               ctx,
+		cancel:            cancel,
 	}
 	return em
 }
@@ -30,6 +36,7 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 		slog.Error("Unknown event", "event", ei.Event())
 		return
 	}
+
 	if em.engine.Config.Callback != nil {
 		event := CallbackMap[ei.Event()]
 		handle := em.engine.Config.Callback(&EventCallback{
@@ -49,9 +56,9 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 		default:
 		}
 	}
+
 	if eventInfo.Reload {
 		if em.engine.Config.Ignore.shouldIgnore(ei.Path()) {
-			slog.Debug("Ignoring event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
 			return
 		}
 		slog.Debug("Event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
@@ -59,7 +66,23 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 		if currentTime.Sub(em.lastEventTime) >= em.debounceThreshold {
 			slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
 			slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
-			em.engine.StartProcesses()
+
+			// Find the specific process associated with the file change event
+			for _, p := range em.engine.ProcessManager.processes {
+				if p.Primary {
+					// Kill the specific process by canceling its context
+					if cancel, ok := em.engine.ProcessManager.cancels[p.Exec]; ok {
+						cancel()
+						delete(em.engine.ProcessManager.ctxs, p.Exec)
+						delete(em.engine.ProcessManager.cancels, p.Exec)
+					}
+					break
+				}
+			}
+
+			// Start a new instance of the process
+			go em.engine.StartProcess(em.engine.ctx)
+
 			em.lastEventTime = currentTime
 		} else {
 			slog.Debug("Debouncing event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
@@ -67,9 +90,8 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 	}
 }
 
-func (engine *Engine) watch() {
+func (engine *Engine) watch(eventManager *EventManager) {
 	slog.Info("Watching", "path", engine.Config.RootPath)
-	eventManager := NewEventManager(engine, engine.Config.Debounce)
 	engine.Chan = make(chan notify.EventInfo, 1)
 	defer notify.Stop(engine.Chan)
 

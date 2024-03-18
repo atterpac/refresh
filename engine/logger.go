@@ -2,6 +2,7 @@ package engine
 
 import (
 	"bufio"
+	"context"
 	"io"
 	"log/slog"
 	"os"
@@ -22,11 +23,23 @@ func newLogger(level string) *slog.Logger {
 	}))
 }
 
-func printSubProcess(pipe io.ReadCloser) {
+func printSubProcess(ctx context.Context, pipe io.ReadCloser) {
 	scanner := bufio.NewScanner(pipe)
+	defer pipe.Close()
+
 	for {
-		for scanner.Scan() {
-			println(scanner.Text())
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if scanner.Scan() {
+				println(scanner.Text())
+			} else {
+				if err := scanner.Err(); err != nil {
+					slog.Debug("Couldnt connect to process log pipe", "err", err)
+				}
+				return
+			}
 		}
 	}
 }
