@@ -106,19 +106,6 @@ func (engine *Engine) verifyExecute() error {
 				primary = true
 			}
 		}
-	} else {
-		var refresh bool
-		for _, exe := range engine.Config.ExecList {
-			switch exe {
-			case "REFRESH":
-				refresh = true
-			default:
-				continue
-			}
-		}
-		if !refresh {
-			return errors.New("Execute List must contain `REFRESH`")
-		}
 	}
 	return nil
 }

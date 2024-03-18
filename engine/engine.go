@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	"errors"
 	"io"
 	"log/slog"
@@ -20,28 +21,42 @@ type Engine struct {
 	ProcessLogFile *os.File
 	ProcessLogPipe io.ReadCloser
 	ProcessManager *ProcessManager
+	ctx            context.Context
+	cancel         context.CancelFunc
 }
 
 func (engine *Engine) Start() error {
 	config := engine.Config
 	slog.Info("Refresh Start")
+
 	if config.Ignore.IgnoreGit {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
 	}
+
 	engine.ProcessManager = NewProcessManager()
 	engine.generateProcess()
+
 	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
+
+	ctx, cancel := context.WithCancel(context.Background())
+	engine.ctx = ctx
+	engine.cancel = cancel
+
 	time.Sleep(waitTime)
-	engine.StartProcesses()
-	firstRun = false
+
+	go engine.StartProcess(engine.ctx)
 	trapChan := make(chan error)
 	go engine.sigTrap(trapChan)
-	go engine.watch()
+
+	eventManager := NewEventManager(engine, engine.Config.Debounce)
+	go engine.watch(eventManager)
+
 	return <-trapChan
 }
 
 func (engine *Engine) Stop() {
-	engine.ProcessManager.KillProcesses(false)
+	engine.ProcessManager.KillProcesses()
+	engine.cancel()
 	notify.Stop(engine.Chan)
 }
 
