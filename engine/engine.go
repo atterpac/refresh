@@ -1,3 +1,6 @@
+//go:build windows || linux || darwin
+// +build windows linux darwin
+
 package engine
 
 import (
@@ -9,18 +12,19 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/atterpac/refresh/process"
 	"github.com/rjeczalik/notify"
 )
 
 type Engine struct {
-	PrimaryProcess Process
-	BgProcess      Process
+	PrimaryProcess process.Process
+	BgProcess      process.Process
 	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config" yaml:"config"`
 	ProcessLogFile *os.File
 	ProcessLogPipe io.ReadCloser
-	ProcessManager *ProcessManager
+	ProcessManager *process.ProcessManager
 	ctx            context.Context
 	cancel         context.CancelFunc
 }
@@ -33,9 +37,6 @@ func (engine *Engine) Start() error {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
 	}
 
-	engine.ProcessManager = NewProcessManager()
-	engine.generateProcess()
-
 	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -44,7 +45,7 @@ func (engine *Engine) Start() error {
 
 	time.Sleep(waitTime)
 
-	go engine.StartProcess(engine.ctx)
+	go engine.ProcessManager.StartProcess(engine.ctx)
 	trapChan := make(chan error)
 	go engine.sigTrap(trapChan)
 
@@ -79,6 +80,8 @@ func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return engine, nil
 }
 
@@ -90,6 +93,8 @@ func NewEngineFromConfig(options Config) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return engine, nil
 }
 
@@ -109,6 +114,8 @@ func NewEngineFromTOML(confPath string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return &engine, nil
 }
 
@@ -128,6 +135,8 @@ func NewEngineFromYAML(confPath string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return &engine, nil
 }
 

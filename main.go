@@ -1,10 +1,9 @@
 package main
 
 import (
-	"github.com/atterpac/refresh/engine"
+	"github.com/atterpac/refresh/tui"
 )
 
-
 func main() {
-	engine.StartTea()
+	tui.StartTui()
 }

@@ -1,4 +1,4 @@
-package engine
+package process
 
 import (
 	"os"
@@ -23,18 +23,10 @@ var KILL_STALE = Execute{
 
 var REFRESH_EXEC = "REFRESH"
 var KILL_EXEC = "KILL_STALE"
-var firstRun = true
 
 // Takes a string and splits it on spaces to create a slice of strings
 func generateExec(cmd string) *exec.Cmd {
 	slice := strings.Split(cmd, " ")
 	cmdEx := exec.Command(slice[0], slice[1:]...)
 	return cmdEx
-}
-
-func (e *Engine) generateProcess() {
-	e.ProcessManager.AddProcess(e.Config.BackgroundStruct.Cmd, e.Config.BackgroundStruct.IsBlocking, e.Config.BackgroundStruct.IsPrimary, true)
-	for _, ex := range e.Config.ExecStruct {
-		e.ProcessManager.AddProcess(ex.Cmd, ex.IsBlocking, ex.IsPrimary, false)
-	}
 }

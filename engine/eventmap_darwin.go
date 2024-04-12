@@ -6,7 +6,7 @@ import (
 	"github.com/rjeczalik/notify"
 )
 
-var eventMap = map[notify.Event]eventInfo{
+var EventMap = map[notify.Event]eventInfo{
 	notify.Write:  {Name: "Write", Reload: true},
 	notify.Create: {Name: "Create", Reload: false},
 	notify.Remove: {Name: "Remove", Reload: false},

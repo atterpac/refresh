@@ -1,8 +1,7 @@
-package engine
+package process
 
 import (
 	"context"
-	"os"
 	"os/exec"
 	"sync"
 )
@@ -13,35 +12,41 @@ type Process struct {
 	Background bool
 	Primary    bool
 	cmd        *exec.Cmd
-	termCh     chan struct{}
-	doneCh     chan struct{}
-	pty        *os.File
 	pid        int
 	pgid       int
-	ctx        context.Context
-	cancel     context.CancelFunc
 }
 
 type ProcessManager struct {
-	processes []*Process
+	Processes []*Process
 	mu        sync.RWMutex
-	ctxs      map[string]context.Context
-	cancels   map[string]context.CancelFunc
+	Ctxs      map[string]context.Context
+	Cancels   map[string]context.CancelFunc
 }
 
 func NewProcessManager() *ProcessManager {
 	return &ProcessManager{
-		processes: make([]*Process, 0, 10),
-		ctxs:      make(map[string]context.Context),
-		cancels:   make(map[string]context.CancelFunc),
+		Processes: make([]*Process, 0),
+		Ctxs:      make(map[string]context.Context),
+		Cancels:   make(map[string]context.CancelFunc),
 	}
 }
 
 func (pm *ProcessManager) AddProcess(exec string, blocking bool, primary bool, background bool) {
-	pm.processes = append(pm.processes, &Process{
+	pm.Processes = append(pm.Processes, &Process{
 		Exec:       exec,
 		Blocking:   blocking,
 		Primary:    primary,
 		Background: background,
 	})
+}
+
+func (pm *ProcessManager) GetExecutes() []string {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+
+	var execs []string
+	for _, p := range pm.Processes {
+		execs = append(execs, p.Exec)
+	}
+	return execs
 }

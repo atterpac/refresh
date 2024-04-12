@@ -1,17 +1,16 @@
-//go:build !windows
+//go:build windows
 
-package engine
+package process
 
 import (
 	"context"
-	// "log/slog"
 	"os"
-	"syscall"
+	"os/exec"
+	"strconv"
 	"time"
 )
 
-func (e *Engine) StartProcess(ctx context.Context) {
-	pm := e.ProcessManager
+func (pm *ProcessManager) StartProcess(ctx context.Context) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -23,7 +22,6 @@ func (e *Engine) StartProcess(ctx context.Context) {
 	// slog.Info("Starting Processes", "count", len(pm.processes))
 
 	for _, p := range pm.processes {
-		tuiMsg := TuiMsg{Execute: p.Exec, StartTime: time.Now()}
 		if p.Exec == "KILL_STALE" {
 			continue
 		}
@@ -62,7 +60,7 @@ func (e *Engine) StartProcess(ctx context.Context) {
 						// Kill any remaining child processes
 						if pr.pgid != 0 {
 							// slog.Debug("Killing process group", "pgid", pr.pgid)
-							syscall.Kill(-pr.pgid, syscall.SIGKILL)
+							taskKill(-pr.pid)
 						}
 					}
 				}
@@ -72,23 +70,15 @@ func (e *Engine) StartProcess(ctx context.Context) {
 				// slog.Debug("First run, not killing processes")
 				firstRun = false
 			}
-			if !e.Config.externalSlog {
-				cmd.Stderr = os.Stderr
-				e.ProcessLogPipe, _ = cmd.StdoutPipe()
-				go printSubProcess(ctx, e.ProcessLogPipe)
-			}
+			// Log buffers
 		}
 
 		var err error
 		if p.Blocking {
 			err = cmd.Run()
-			tuiMsg.EndTime = time.Now()
-			MsgChan <- tuiMsg
 		} else {
-			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			err = cmd.Start()
 			if cmd.Process != nil {
-				p.pgid, _ = syscall.Getpgid(cmd.Process.Pid)
 				p.pid = cmd.Process.Pid
 
 				processCtx, processCancel := context.WithCancel(ctx)
@@ -100,11 +90,11 @@ func (e *Engine) StartProcess(ctx context.Context) {
 					select {
 					case <-processCtx.Done():
 						// slog.Warn("Killing Process", "exec", p.Exec, "pgid", p.pgid, "pid", p.pid)
-						syscall.Kill(-p.pid, syscall.SIGKILL)
+						taskKill(p.pid)
 						// slog.Debug("Process Terminated", "exec", p.Exec)
 					case <-ctx.Done():
 						// slog.Debug("Context Done", "exec", p.Exec)
-						syscall.Kill(-p.pid, syscall.SIGKILL)
+						taskKill(p.pid)
 					default:
 						cmd.Wait()
 						// slog.Debug("Process Done", "exec", p.Exec)
@@ -119,19 +109,31 @@ func (e *Engine) StartProcess(ctx context.Context) {
 			// slog.Error("Running Command", "exec", p.Exec, "err", err)
 		}
 	}
+
 	firstRun = false
 }
 
+// Window specific kill process
 func (pm *ProcessManager) KillProcesses() {
+	// slog.Debug("Killing Processes")
 	for _, p := range pm.processes {
-		// slog.Debug("Killing Process", "exec", p.Exec, "pid", p.pid)
-		if p.pid != 0 {
-			_, err := os.FindProcess(p.pid)
-			if err != nil {
-				// slog.Debug("Process not running", "exec", p.Exec)
-				continue
-			}
-			syscall.Kill(-p.pid, syscall.SIGKILL)
+		if p.pgid == 0 {
+			continue
+		}
+		err := taskKill(p.pid)
+		if err != nil {
+			// slog.Error("Error killing process", "pid", p.cmd.Process.Pid, "err", err.Error())
 		}
 	}
+}
+
+func taskKill(pid int) error {
+	kill := exec.Command("taskkill", "/T", "/F", "/PID", strconv.Itoa(pid))
+	err := kill.Run()
+	if err != nil {
+		// slog.Error("Error killing process", "pid", pid, "err", err.Error())
+		return err
+	}
+	// slog.Debug("Process successfull killed", "pid", pid)
+	return nil
 }

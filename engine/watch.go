@@ -1,3 +1,6 @@
+//go:build linux || darwin || windows
+// +build linux darwin windows
+
 package engine
 
 import (
@@ -31,7 +34,7 @@ func NewEventManager(engine *Engine, debounce int) *EventManager {
 }
 
 func (em *EventManager) HandleEvent(ei notify.EventInfo) {
-	eventInfo, ok := eventMap[ei.Event()]
+	eventInfo, ok := EventMap[ei.Event()]
 	if !ok {
 		// slog.Error("Unknown event", "event", ei.Event())
 		return
@@ -68,20 +71,20 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 			// slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
 
 			// Find the specific process associated with the file change event
-			for _, p := range em.engine.ProcessManager.processes {
+			for _, p := range em.engine.ProcessManager.Processes {
 				if p.Primary {
 					// Kill the specific process by canceling its context
-					if cancel, ok := em.engine.ProcessManager.cancels[p.Exec]; ok {
+					if cancel, ok := em.engine.ProcessManager.Cancels[p.Exec]; ok {
 						cancel()
-						delete(em.engine.ProcessManager.ctxs, p.Exec)
-						delete(em.engine.ProcessManager.cancels, p.Exec)
+						delete(em.engine.ProcessManager.Ctxs, p.Exec)
+						delete(em.engine.ProcessManager.Cancels, p.Exec)
 					}
 					break
 				}
 			}
 
 			// Start a new instance of the process
-			go em.engine.StartProcess(em.engine.ctx)
+			go em.engine.ProcessManager.StartProcess(em.engine.ctx)
 
 			em.lastEventTime = currentTime
 		} else {
