@@ -2,7 +2,7 @@ package engine
 
 import (
 	"context"
-	"log/slog"
+	// "log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -33,7 +33,7 @@ func NewEventManager(engine *Engine, debounce int) *EventManager {
 func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 	eventInfo, ok := eventMap[ei.Event()]
 	if !ok {
-		slog.Error("Unknown event", "event", ei.Event())
+		// slog.Error("Unknown event", "event", ei.Event())
 		return
 	}
 
@@ -48,10 +48,10 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 		case EventContinue:
 			// Continue
 		case EventBypass:
-			slog.Debug("Bypassing event", "event", ei.Event(), "path", ei.Path())
+			// slog.Debug("Bypassing event", "event", ei.Event(), "path", ei.Path())
 			return
 		case EventIgnore:
-			slog.Debug("Ignoring event", "event", ei.Event(), "path", ei.Path())
+			// slog.Debug("Ignoring event", "event", ei.Event(), "path", ei.Path())
 			return
 		default:
 		}
@@ -61,11 +61,11 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 		if em.engine.Config.Ignore.shouldIgnore(ei.Path()) {
 			return
 		}
-		slog.Debug("Event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+		// slog.Debug("Event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
 		currentTime := time.Now()
 		if currentTime.Sub(em.lastEventTime) >= em.debounceThreshold {
-			slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
-			slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
+			// slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+			// slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
 
 			// Find the specific process associated with the file change event
 			for _, p := range em.engine.ProcessManager.processes {
@@ -85,18 +85,18 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 
 			em.lastEventTime = currentTime
 		} else {
-			slog.Debug("Debouncing event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+			// slog.Debug("Debouncing event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
 		}
 	}
 }
 
 func (engine *Engine) watch(eventManager *EventManager) {
-	slog.Info("Watching", "path", engine.Config.RootPath)
+	// slog.Info("Watching", "path", engine.Config.RootPath)
 	engine.Chan = make(chan notify.EventInfo, 1)
 	defer notify.Stop(engine.Chan)
 
 	if err := notify.Watch(engine.Config.RootPath+"/...", engine.Chan, notify.All); err != nil {
-		slog.Error("Watch Error", "err", err.Error())
+		// slog.Error("Watch Error", "err", err.Error())
 		return
 	}
 
@@ -112,12 +112,12 @@ func (engine *Engine) watch(eventManager *EventManager) {
 func getPath(path string) string {
 	wd, err := os.Getwd()
 	if err != nil {
-		slog.Error("Getting working directory")
+		// slog.Error("Getting working directory")
 		return ""
 	}
 	relPath, err := filepath.Rel(wd, path)
 	if err != nil {
-		slog.Error("Getting relative path")
+		// slog.Error("Getting relative path")
 		return ""
 	}
 	return relPath

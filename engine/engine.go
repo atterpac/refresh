@@ -27,7 +27,7 @@ type Engine struct {
 
 func (engine *Engine) Start() error {
 	config := engine.Config
-	slog.Info("Refresh Start")
+	// slog.Info("Refresh Start")
 
 	if config.Ignore.IgnoreGit {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
