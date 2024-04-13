@@ -4,7 +4,6 @@ package process
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -77,10 +76,10 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 
 		var err error
 		if p.Blocking {
-			output, err := cmd.CombinedOutput()
-			if len(output) > 0 {
-				fmt.Println(string(output))
-			}
+			cmd.Stderr = os.Stderr
+			p.logPipe, err = cmd.StdoutPipe()
+			go printSubProcess(ctx, p.logPipe)
+			err = cmd.Run()
 			if err != nil {
 				slog.Error("Running Command", "exec", p.Exec, "err", err)
 				cancel()

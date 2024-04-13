@@ -27,12 +27,12 @@ type Engine struct {
 	ProcessManager *process.ProcessManager
 	ctx            context.Context
 	cancel         context.CancelFunc
+	isPaused       bool
 }
 
 func (engine *Engine) Start() error {
 	config := engine.Config
-	slog.Info("Refresh Start")
-
+	slog.Info("Refresh Starting...")
 	if config.Ignore.IgnoreGit {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
 	}
@@ -42,18 +42,16 @@ func (engine *Engine) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	engine.ctx = ctx
 	engine.cancel = cancel
-
 	time.Sleep(waitTime)
-	// Stop engine if context is cancelled
-	// if cancel is called, stop the engine
 
-	go engine.ProcessManager.StartProcess(engine.ctx, engine.cancel)
 	trapChan := make(chan error)
+	go engine.sigTrap(trapChan)
+	go engine.ProcessManager.StartProcess(engine.ctx, engine.cancel)
 	go func() {
 		<-ctx.Done()
 		if ctx.Err() == context.Canceled {
 			if !engine.ProcessManager.FirstRun {
-				slog.Error("Could not refresh processes due to build errors")
+				slog.Error("Could not refresh processes due to execution errors")
 				newCtx, newCancel := context.WithCancel(context.Background())
 				engine.ctx = newCtx
 				engine.cancel = newCancel
@@ -63,11 +61,9 @@ func (engine *Engine) Start() error {
 			trapChan <- errors.New("An error occured while starting proceses")
 		}
 	}()
-	go engine.sigTrap(trapChan)
 
 	eventManager := NewEventManager(engine, engine.Config.Debounce)
 	go engine.watch(eventManager)
-
 	return <-trapChan
 }
 
