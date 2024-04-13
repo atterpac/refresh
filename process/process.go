@@ -9,8 +9,6 @@ import (
 	"sync"
 )
 
-var firstRun = true
-
 type Process struct {
 	Exec       string
 	Blocking   bool
@@ -28,6 +26,7 @@ type ProcessManager struct {
 	Ctxs      map[string]context.Context
 	Cancels   map[string]context.CancelFunc
 	mainCtx   context.Context
+	FirstRun  bool
 }
 
 func NewProcessManager() *ProcessManager {
@@ -35,6 +34,7 @@ func NewProcessManager() *ProcessManager {
 		Processes: make([]*Process, 0),
 		Ctxs:      make(map[string]context.Context),
 		Cancels:   make(map[string]context.CancelFunc),
+		FirstRun:  true,
 	}
 }
 

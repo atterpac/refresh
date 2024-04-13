@@ -61,6 +61,9 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 	}
 
 	if eventInfo.Reload {
+		newCtx, newCancel := context.WithCancel(context.Background())
+		em.engine.ctx = newCtx
+		em.engine.cancel = newCancel
 		if em.engine.Config.Ignore.shouldIgnore(ei.Path()) {
 			return
 		}
@@ -85,6 +88,19 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 
 			// Start a new instance of the process
 			go em.engine.ProcessManager.StartProcess(em.engine.ctx, em.engine.cancel)
+			go func() {
+				<-em.engine.ctx.Done()
+				if em.engine.ctx.Err() == context.Canceled {
+					if !em.engine.ProcessManager.FirstRun {
+						// slog.Error("Could not refresh processes due to build errors")
+						newCtx, newCancel := context.WithCancel(context.Background())
+						em.engine.ctx = newCtx
+						em.engine.cancel = newCancel
+						return
+					}
+					em.engine.Stop()
+				}
+			}()
 
 			em.lastEventTime = currentTime
 		} else {

@@ -52,6 +52,13 @@ func (engine *Engine) Start() error {
 	go func() {
 		<-ctx.Done()
 		if ctx.Err() == context.Canceled {
+			if !engine.ProcessManager.FirstRun {
+				slog.Error("Could not refresh processes due to build errors")
+				newCtx, newCancel := context.WithCancel(context.Background())
+				engine.ctx = newCtx
+				engine.cancel = newCancel
+				return
+			}
 			engine.Stop()
 			trapChan <- errors.New("An error occured while starting proceses")
 		}

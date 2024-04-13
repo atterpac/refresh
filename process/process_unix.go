@@ -22,14 +22,14 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		if p.Exec == "KILL_STALE" {
 			continue
 		}
-		if !firstRun && p.Background {
+		if !pm.FirstRun && p.Background {
 			continue
 		}
 		cmd := generateExec(p.Exec)
 		p.cmd = cmd
 		if p.Primary {
 			// Ensure previous processes are killed if this isnt the first run
-			if !firstRun {
+			if !pm.FirstRun {
 				for _, pr := range pm.Processes {
 					if !pr.Background {
 						// check if pid is running
@@ -59,7 +59,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				}
 				time.Sleep(200 * time.Millisecond)
 			} else {
-				firstRun = false
+				pm.FirstRun = false
 			}
 		}
 		var err error
@@ -94,7 +94,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			pm.Cancels[p.Exec] = processCancel
 			// slog.Debug("Stored Process Context", "exec", p.Exec)
 
-			go func(firstRun bool) {
+			go func() {
 				select {
 				case <-processCtx.Done():
 					_ = syscall.Kill(-p.pid, syscall.SIGKILL)
@@ -109,14 +109,14 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 					delete(pm.Ctxs, p.Exec)
 					delete(pm.Cancels, p.Exec)
 				}
-			}(firstRun)
+			}()
 		}
 		if err != nil {
 			slog.Error("Running Command", "exec", p.Exec, "err", err)
 			cancel()
 		}
 	}
-	firstRun = false
+	pm.FirstRun = false
 }
 
 func (pm *ProcessManager) KillProcesses() {
