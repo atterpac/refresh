@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/atterpac/refresh/engine"
@@ -10,10 +11,17 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func StartTui() {
+func StartTui(withTui bool) {
 	engine, err := engine.NewEngineFromTOML("./example/example.toml")
 	if err != nil {
 		panic(err)
+	}
+	if !withTui {
+		err := engine.Start()
+		if err != nil {
+			slog.Error("Refresh has exited", "err", err)
+			os.Exit(0)
+		}
 	}
 	executes := engine.ProcessManager.GetExecutes()
 	println("count", len(executes))

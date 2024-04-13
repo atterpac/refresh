@@ -84,7 +84,7 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 			}
 
 			// Start a new instance of the process
-			go em.engine.ProcessManager.StartProcess(em.engine.ctx)
+			go em.engine.ProcessManager.StartProcess(em.engine.ctx, em.engine.cancel)
 
 			em.lastEventTime = currentTime
 		} else {

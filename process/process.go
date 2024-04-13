@@ -1,16 +1,22 @@
 package process
 
 import (
+	"bufio"
 	"context"
+	"fmt"
+	"io"
 	"os/exec"
 	"sync"
 )
+
+var firstRun = true
 
 type Process struct {
 	Exec       string
 	Blocking   bool
 	Background bool
 	Primary    bool
+	logPipe    io.ReadCloser
 	cmd        *exec.Cmd
 	pid        int
 	pgid       int
@@ -21,6 +27,7 @@ type ProcessManager struct {
 	mu        sync.RWMutex
 	Ctxs      map[string]context.Context
 	Cancels   map[string]context.CancelFunc
+	mainCtx   context.Context
 }
 
 func NewProcessManager() *ProcessManager {
@@ -49,4 +56,19 @@ func (pm *ProcessManager) GetExecutes() []string {
 		execs = append(execs, p.Exec)
 	}
 	return execs
+}
+
+func printSubProcess(ctx context.Context, pipe io.ReadCloser) {
+	scanner := bufio.NewScanner(pipe)
+	defer pipe.Close()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			if scanner.Scan() {
+				fmt.Println(scanner.Text())
+			}
+		}
+	}
 }

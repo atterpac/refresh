@@ -31,7 +31,7 @@ type Engine struct {
 
 func (engine *Engine) Start() error {
 	config := engine.Config
-	// slog.Info("Refresh Start")
+	slog.Info("Refresh Start")
 
 	if config.Ignore.IgnoreGit {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
@@ -44,9 +44,18 @@ func (engine *Engine) Start() error {
 	engine.cancel = cancel
 
 	time.Sleep(waitTime)
+	// Stop engine if context is cancelled
+	// if cancel is called, stop the engine
 
-	go engine.ProcessManager.StartProcess(engine.ctx)
+	go engine.ProcessManager.StartProcess(engine.ctx, engine.cancel)
 	trapChan := make(chan error)
+	go func() {
+		<-ctx.Done()
+		if ctx.Err() == context.Canceled {
+			engine.Stop()
+			trapChan <- errors.New("An error occured while starting proceses")
+		}
+	}()
 	go engine.sigTrap(trapChan)
 
 	eventManager := NewEventManager(engine, engine.Config.Debounce)

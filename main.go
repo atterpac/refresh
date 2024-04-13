@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	tui.StartTui()
+	tui.StartTui(false)
 }

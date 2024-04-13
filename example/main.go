@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	background := refresh.Execute {
+	background := refresh.Execute{
 		Cmd: "pwd",
 	}
 	tidy := refresh.Execute{
@@ -23,7 +23,7 @@ func main() {
 	kill := refresh.KILL_STALE
 	run := refresh.Execute{
 		Cmd:        "./myapp",
-		ChangeDir: "./bin",
+		ChangeDir:  "./binn",
 		IsBlocking: false,
 		IsPrimary:  true,
 	}
@@ -34,7 +34,7 @@ func main() {
 		IgnoreGit:    true,
 	}
 	_ = refresh.Config{
-		RootPath: "./test",
+		RootPath:         "./test",
 		BackgroundStruct: background,
 		// Below is ran when a reload is triggered before killing the stale version
 		Ignore:     ignore,
