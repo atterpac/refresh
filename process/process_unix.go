@@ -4,7 +4,6 @@ package process
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"syscall"
@@ -64,10 +63,13 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		}
 		var err error
 		if p.Blocking {
-			output, err := cmd.CombinedOutput()
-			if len(output) > 0 {
-				fmt.Println(string(output))
+			cmd.Stderr = os.Stderr
+			p.logPipe, err = cmd.StdoutPipe()
+			if err != nil {
+				slog.Error("Getting Stdout Pipe", "exec", p.Exec, "err", err)
 			}
+			go printSubProcess(ctx, p.logPipe)
+			err = cmd.Run()
 			if err != nil {
 				slog.Error("Running Command", "exec", p.Exec, "err", err)
 				cancel()
@@ -83,7 +85,8 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			go printSubProcess(ctx, p.logPipe)
 			err = cmd.Start()
 			if cmd.Process == nil {
-				slog.Error("Process is nil", "exec", p.Exec)
+				slog.Error("Primary process not running", "exec", p.Exec)
+				cancel()
 				continue
 			}
 			p.pgid, _ = syscall.Getpgid(cmd.Process.Pid)
