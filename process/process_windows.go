@@ -27,7 +27,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		if p.Exec == "KILL_STALE" {
 			continue
 		}
-		if !firstRun && p.Background {
+		if !pm.FirstRun && p.Background {
 			continue
 		}
 
@@ -35,7 +35,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		p.cmd = cmd
 
 		if p.Primary {
-			if !firstRun {
+			if !pm.FirstRun {
 				// slog.Debug("Not first run, killing processes")
 				for _, pr := range pm.Processes {
 					if !pr.Background {
@@ -70,7 +70,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				time.Sleep(200 * time.Millisecond)
 			} else {
 				// slog.Debug("First run, not killing processes")
-				firstRun = false
+				pm.FirstRun = false
 			}
 			// Log buffers
 		}
@@ -129,7 +129,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		}
 	}
 
-	firstRun = false
+	pm.FirstRun = false
 }
 
 // Window specific kill process
