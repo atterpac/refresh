@@ -1,3 +1,6 @@
+//go:build windows || linux || darwin
+// +build windows linux darwin
+
 package engine
 
 import (
@@ -9,18 +12,19 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/atterpac/refresh/process"
 	"github.com/rjeczalik/notify"
 )
 
 type Engine struct {
-	PrimaryProcess Process
-	BgProcess      Process
+	PrimaryProcess process.Process
+	BgProcess      process.Process
 	Chan           chan notify.EventInfo
 	Active         bool
 	Config         Config `toml:"config" yaml:"config"`
 	ProcessLogFile *os.File
 	ProcessLogPipe io.ReadCloser
-	ProcessManager *ProcessManager
+	ProcessManager *process.ProcessManager
 	ctx            context.Context
 	cancel         context.CancelFunc
 }
@@ -33,9 +37,6 @@ func (engine *Engine) Start() error {
 		config.ignoreMap.git = readGitIgnore(config.RootPath)
 	}
 
-	engine.ProcessManager = NewProcessManager()
-	engine.generateProcess()
-
 	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -43,9 +44,25 @@ func (engine *Engine) Start() error {
 	engine.cancel = cancel
 
 	time.Sleep(waitTime)
+	// Stop engine if context is cancelled
+	// if cancel is called, stop the engine
 
-	go engine.StartProcess(engine.ctx)
+	go engine.ProcessManager.StartProcess(engine.ctx, engine.cancel)
 	trapChan := make(chan error)
+	go func() {
+		<-ctx.Done()
+		if ctx.Err() == context.Canceled {
+			if !engine.ProcessManager.FirstRun {
+				slog.Error("Could not refresh processes due to build errors")
+				newCtx, newCancel := context.WithCancel(context.Background())
+				engine.ctx = newCtx
+				engine.cancel = newCancel
+				return
+			}
+			engine.Stop()
+			trapChan <- errors.New("An error occured while starting proceses")
+		}
+	}()
 	go engine.sigTrap(trapChan)
 
 	eventManager := NewEventManager(engine, engine.Config.Debounce)
@@ -79,6 +96,8 @@ func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return engine, nil
 }
 
@@ -90,6 +109,8 @@ func NewEngineFromConfig(options Config) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return engine, nil
 }
 
@@ -109,6 +130,8 @@ func NewEngineFromTOML(confPath string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return &engine, nil
 }
 
@@ -128,6 +151,8 @@ func NewEngineFromYAML(confPath string) (*Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
 	return &engine, nil
 }
 

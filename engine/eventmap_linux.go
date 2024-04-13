@@ -6,7 +6,7 @@ import (
 	"github.com/rjeczalik/notify"
 )
 
-var eventMap = map[notify.Event]eventInfo{
+var EventMap = map[notify.Event]eventInfo{
 	notify.InCloseWrite: {Name: "InCloseWrite", Reload: true},
 	notify.InModify:     {Name: "InModify", Reload: true},
 	notify.InMovedTo:    {Name: "InMovedTo", Reload: true},
@@ -31,4 +31,3 @@ var CallbackMap = map[notify.Event]Event{
 	notify.Remove:       Remove,
 	notify.Rename:       Rename,
 }
-

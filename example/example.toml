@@ -4,7 +4,7 @@
 # Just used in the TUI not required
 label = "My Project"
 # Relative to this files location
-root_path = "./test"
+root_path = "./example/test"
 # debug | info(default) | warn | error | mute
 log_level = "debug" 
 # Debounce setting for ignoring reptitive file system notifications
@@ -28,10 +28,6 @@ cmd="pwd"
 # primary will be the command that will persist through even when a file change is detected
 # KILL_STALE will kill the stale processe that is and must be PRIOR to the primary running
 # change_dir will change the directory to the root_path prior to the command
-[[config.executes]]
-dir="./ignoreme"
-cmd="pwd"
-
 [[config.executes]]
 cmd="go mod tidy"
 blocking=true

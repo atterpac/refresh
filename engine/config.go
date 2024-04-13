@@ -10,18 +10,19 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/atterpac/refresh/process"
 	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
-	RootPath           string      `toml:"root_path" yaml:"root_path"`
-	BackgroundStruct   Execute     `toml:"background" yaml:"background"`
-	BackgroundCallback func() bool `toml:"-" yaml:"-"`
-	Ignore             Ignore      `toml:"ignore" yaml:"ignore"`
-	ExecStruct         []Execute   `toml:"executes" yaml:"executes"`
-	ExecList           []string    `toml:"exec_list" yaml:"exec_list"`
-	LogLevel           string      `toml:"log_level" yaml:"log_level"`
-	Debounce           int         `toml:"debounce" yaml:"debounce"`
+	RootPath           string            `toml:"root_path" yaml:"root_path"`
+	BackgroundStruct   process.Execute   `toml:"background" yaml:"background"`
+	BackgroundCallback func() bool       `toml:"-" yaml:"-"`
+	Ignore             Ignore            `toml:"ignore" yaml:"ignore"`
+	ExecStruct         []process.Execute `toml:"executes" yaml:"executes"`
+	ExecList           []string          `toml:"exec_list" yaml:"exec_list"`
+	LogLevel           string            `toml:"log_level" yaml:"log_level"`
+	Debounce           int               `toml:"debounce" yaml:"debounce"`
 	Callback           func(*EventCallback) EventHandle
 	Slog               *slog.Logger
 	ignoreMap          ignoreMap
@@ -159,5 +160,12 @@ func changeWorkingDirectory(path string) {
 	err := os.Chdir(path)
 	if err != nil {
 		slog.Error("Setting new directory", "dir", path)
+	}
+}
+
+func (e *Engine) generateProcess() {
+	e.ProcessManager.AddProcess(e.Config.BackgroundStruct.Cmd, e.Config.BackgroundStruct.IsBlocking, e.Config.BackgroundStruct.IsPrimary, true)
+	for _, ex := range e.Config.ExecStruct {
+		e.ProcessManager.AddProcess(ex.Cmd, ex.IsBlocking, ex.IsPrimary, false)
 	}
 }
