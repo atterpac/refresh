@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 	"sync"
 )
@@ -60,15 +61,19 @@ func (pm *ProcessManager) GetExecutes() []string {
 
 func printSubProcess(ctx context.Context, pipe io.ReadCloser) {
 	scanner := bufio.NewScanner(pipe)
-	defer pipe.Close()
 	for {
 		select {
 		case <-ctx.Done():
+			slog.Debug("Context closed, stopping printSubProcess")
 			return
 		default:
-			if scanner.Scan() {
-				fmt.Println(scanner.Text())
+			if !scanner.Scan() {
+				if err := scanner.Err(); err != nil {
+					slog.Debug("Scanner error", "err", err)
+				}
+				return
 			}
+			fmt.Println(scanner.Text())
 		}
 	}
 }
