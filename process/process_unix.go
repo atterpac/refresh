@@ -75,6 +75,8 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				cancel()
 				return
 			}
+			slog.Debug("Process completed closing context", "exec", p.Exec)
+			ctx.Done()
 		} else {
 			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			cmd.Stderr = os.Stderr
@@ -98,17 +100,22 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			// slog.Debug("Stored Process Context", "exec", p.Exec)
 
 			go func() {
+				errCh := make(chan error, 1)
+				go func() {
+					errCh <- cmd.Wait()
+				}()
 				select {
 				case <-processCtx.Done():
 					_ = syscall.Kill(-p.pid, syscall.SIGKILL)
 				case <-ctx.Done():
 					slog.Debug("Context closed", "exec", p.Exec)
 					_ = syscall.Kill(-p.pid, syscall.SIGKILL)
-				default:
-					err := cmd.Wait()
+				case err := <-errCh:
 					if err != nil {
 						cancel()
 					}
+					slog.Debug("Process Errored closing context", "exec", p.Exec)
+					ctx.Done()
 					delete(pm.Ctxs, p.Exec)
 					delete(pm.Cancels, p.Exec)
 				}
@@ -124,14 +131,15 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 
 func (pm *ProcessManager) KillProcesses() {
 	for _, p := range pm.Processes {
-		// slog.Debug("Killing Process", "exec", p.Exec, "pid", p.pid)
 		if p.pid != 0 {
 			_, err := os.FindProcess(p.pid)
 			if err != nil {
-				// slog.Debug("Process not running", "exec", p.Exec)
 				continue
 			}
 			syscall.Kill(-p.pid, syscall.SIGKILL)
+			if cancel, ok := pm.Cancels[p.Exec]; ok {
+				cancel()
+			}
 		}
 	}
 }

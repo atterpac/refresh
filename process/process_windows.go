@@ -86,16 +86,15 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				return
 			}
 		} else {
+			cmd.Stderr = os.Stderr
+			p.logPipe, err = cmd.StdoutPipe()
+			go printSubProcess(ctx, p.logPipe)
 			err = cmd.Start()
+			if err != nil {
+				slog.Error("Getting Stdout Pipe", "exec", p.Exec, "err", err)
+			}
 			if cmd.Process != nil {
-				cmd.Stderr = os.Stderr
-				p.logPipe, err = cmd.StdoutPipe()
-				if err != nil {
-					slog.Error("Getting Stdout Pipe", "exec", p.Exec, "err", err)
-				}
-				go printSubProcess(ctx, p.logPipe)
 				p.pid = cmd.Process.Pid
-
 				processCtx, processCancel := context.WithCancel(ctx)
 				pm.Ctxs[p.Exec] = processCtx
 				pm.Cancels[p.Exec] = processCancel
