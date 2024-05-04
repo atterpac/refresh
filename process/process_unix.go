@@ -21,16 +21,16 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		if p.Exec == "KILL_STALE" {
 			continue
 		}
-		if !pm.FirstRun && p.Background {
+		if !pm.FirstRun && p.Type != "background" {
 			continue
 		}
 		cmd := generateExec(p.Exec)
 		p.cmd = cmd
-		if p.Primary {
+		if p.Type == Primary {
 			// Ensure previous processes are killed if this isnt the first run
 			if !pm.FirstRun {
 				for _, pr := range pm.Processes {
-					if !pr.Background {
+					if p.Type != Background {
 						// check if pid is running
 						if pr.pid != 0 {
 							_, err := os.FindProcess(pr.pid)
@@ -62,7 +62,10 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			}
 		}
 		var err error
-		if p.Blocking {
+		if p.Type == Blocking || p.Type == Once {
+			if !pm.FirstRun && p.Type == Once {
+				continue
+			}
 			cmd.Stderr = os.Stderr
 			p.logPipe, err = cmd.StdoutPipe()
 			if err != nil {

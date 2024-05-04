@@ -11,14 +11,12 @@ import (
 )
 
 type Process struct {
-	Exec       string
-	Blocking   bool
-	Background bool
-	Primary    bool
-	logPipe    io.ReadCloser
-	cmd        *exec.Cmd
-	pid        int
-	pgid       int
+	Exec    string
+	Type    ExecuteType
+	logPipe io.ReadCloser
+	cmd     *exec.Cmd
+	pid     int
+	pgid    int
 }
 
 type ProcessManager struct {
@@ -26,7 +24,6 @@ type ProcessManager struct {
 	mu        sync.RWMutex
 	Ctxs      map[string]context.Context
 	Cancels   map[string]context.CancelFunc
-	mainCtx   context.Context
 	FirstRun  bool
 }
 
@@ -39,12 +36,10 @@ func NewProcessManager() *ProcessManager {
 	}
 }
 
-func (pm *ProcessManager) AddProcess(exec string, blocking bool, primary bool, background bool) {
+func (pm *ProcessManager) AddProcess(exec string, typing string) {
 	pm.Processes = append(pm.Processes, &Process{
-		Exec:       exec,
-		Blocking:   blocking,
-		Primary:    primary,
-		Background: background,
+		Exec: exec,
+		Type: typing,
 	})
 }
 
