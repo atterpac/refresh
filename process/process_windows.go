@@ -73,7 +73,8 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			}
 			// Log buffers
 		}
-
+		pm.ChangeExecuteDirectory(p.Dir)
+		defer pm.RestoreRootDirectory()
 		var err error
 		if p.Type == Blocking || p.Type == Once {
 			if p.Type == Once && !pm.FirstRun {
