@@ -1,6 +1,8 @@
 package process
 
 import (
+	"errors"
+	"fmt"
 	"os/exec"
 	"strings"
 )
@@ -39,4 +41,19 @@ func generateExec(cmd string) *exec.Cmd {
 	slice := strings.Split(cmd, " ")
 	cmdEx := exec.Command(slice[0], slice[1:]...)
 	return cmdEx
+}
+
+func stringToExecuteType(typing string) (ExecuteType, error) {
+	switch typing {
+	case "background":
+		return Background, nil
+	case "once":
+		return Once, nil
+	case "blocking":
+		return Blocking, nil
+	case "primary":
+		return Primary, nil
+	default: 
+		return "", errors.New(fmt.Sprintf("Execute type of %s, is invalid", typing))
+	}
 }

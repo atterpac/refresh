@@ -100,7 +100,7 @@ func (engine *Engine) verifyExecute() error {
 	}
 	if engine.Config.ExecList == nil {
 		for _, exe := range engine.Config.ExecStruct {
-			if exe.IsPrimary {
+			if exe.Type == "primary" {
 				if primary {
 					return errors.New("Only one primary execute can be set")
 				}
@@ -164,8 +164,7 @@ func changeWorkingDirectory(path string) {
 }
 
 func (e *Engine) generateProcess() {
-	e.ProcessManager.AddProcess(e.Config.BackgroundStruct.Cmd, e.Config.BackgroundStruct.IsBlocking, e.Config.BackgroundStruct.IsPrimary, true)
 	for _, ex := range e.Config.ExecStruct {
-		e.ProcessManager.AddProcess(ex.Cmd, ex.IsBlocking, ex.IsPrimary, false)
+		e.ProcessManager.AddProcess(ex.Cmd, ex.Type, ex.ChangeDir)
 	}
 }

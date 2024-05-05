@@ -21,7 +21,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		if p.Exec == "KILL_STALE" {
 			continue
 		}
-		if !pm.FirstRun && p.Type != "background" {
+		if !pm.FirstRun && p.Type == Background {
 			continue
 		}
 		cmd := generateExec(p.Exec)
@@ -30,7 +30,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			// Ensure previous processes are killed if this isnt the first run
 			if !pm.FirstRun {
 				for _, pr := range pm.Processes {
-					if p.Type != Background {
+					if pr.Type != Background {
 						// check if pid is running
 						if pr.pid != 0 {
 							_, err := os.FindProcess(pr.pid)
@@ -61,6 +61,8 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				pm.FirstRun = false
 			}
 		}
+		pm.ChangeExecuteDirectory(p.Dir)
+		defer pm.RestoreRootDirectory()
 		var err error
 		if p.Type == Blocking || p.Type == Once {
 			if !pm.FirstRun && p.Type == Once {
