@@ -26,18 +26,18 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		if p.Exec == "KILL_STALE" {
 			continue
 		}
-		if !pm.FirstRun && p.Background {
+		if !pm.FirstRun && p.Type == Background {
 			continue
 		}
 
 		cmd := generateExec(p.Exec)
 		p.cmd = cmd
 
-		if p.Primary {
+		if p.Type == Primary {
 			if !pm.FirstRun {
 				// slog.Debug("Not first run, killing processes")
 				for _, pr := range pm.Processes {
-					if !pr.Background {
+					if pr.Type != Background {
 						// check if pid is running
 						if pr.pid != 0 {
 							_, err := os.FindProcess(pr.pid)
@@ -73,9 +73,13 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			}
 			// Log buffers
 		}
-
+		pm.ChangeExecuteDirectory(p.Dir)
+		defer pm.RestoreRootDirectory()
 		var err error
-		if p.Blocking {
+		if p.Type == Blocking || p.Type == Once {
+			if p.Type == Once && !pm.FirstRun {
+				continue
+			}
 			cmd.Stderr = os.Stderr
 			p.logPipe, err = cmd.StdoutPipe()
 			go printSubProcess(ctx, p.logPipe)

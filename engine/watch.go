@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/atterpac/refresh/process"
 	"github.com/rjeczalik/notify"
 )
 
@@ -75,7 +76,7 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 
 			// Find the specific process associated with the file change event
 			for _, p := range em.engine.ProcessManager.Processes {
-				if p.Primary {
+				if p.Type == process.Primary {
 					// Kill the specific process by canceling its context
 					if cancel, ok := em.engine.ProcessManager.Cancels[p.Exec]; ok {
 						cancel()

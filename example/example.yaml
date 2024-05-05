@@ -11,19 +11,13 @@ config:
       - ignoredFile.go
     watched_extension:
       - '*.go'
-  background:
-    cmd: pwd
   executes:
+    - cmd: echo 'Hello from refresh'
+      type: once
     - cmd: go mod tidy
-      blocking: true
-      primary: false
+      type: blocking
     - cmd: go build -o ./bin/app
-      blocking: true
-      primary: false
-    - cmd: KILL_STALE
-      blocking: true
-      primary: false
+      type: blocking
     - cmd: ./app
       dir: ./bin
-      blocking: true
-      primary: true
+      type: primary
