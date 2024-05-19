@@ -19,9 +19,6 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		// slog.Warn("No Processes to Start")
 		return
 	}
-
-	// slog.Info("Starting Processes", "count", len(pm.processes))
-
 	for _, p := range pm.Processes {
 		if p.Exec == "KILL_STALE" {
 			continue
@@ -57,12 +54,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 						case <-time.After(100 * time.Millisecond):
 							// slog.Debug("Process not terminated... killing", "exec", pr.Exec)
 						}
-
-						// Kill any remaining child processes
-						if pr.pgid != 0 {
-							// slog.Debug("Killing process group", "pgid", pr.pgid)
-							taskKill(-pr.pid)
-						}
+						taskKill(pr.pid)
 					}
 				}
 				// slog.Debug("Processes killed")
