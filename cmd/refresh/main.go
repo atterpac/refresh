@@ -45,7 +45,14 @@ func main() {
 	}
 
 	if len(configPath) != 0 {
-		watch, err := refresh.NewEngineFromTOML(configPath)
+		// If toml vs yaml
+		var err error
+		var watch *refresh.Engine
+		if strings.Contains(configPath, ".toml") {
+			watch, err = refresh.NewEngineFromTOML(configPath)
+		} else if strings.Contains(configPath, ".yaml") {
+			watch, err = refresh.NewEngineFromYAML(configPath)
+		}
 		if err != nil {
 		} else {
 			ignore := refresh.Ignore{
