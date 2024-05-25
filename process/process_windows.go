@@ -99,7 +99,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 					select {
 					case <-processCtx.Done():
 						// slog.Warn("Killing Process", "exec", p.Exec, "pgid", p.pgid, "pid", p.pid)
-						taskKill(p.pid)
+						ctx.Done()
 						// slog.Debug("Process Terminated", "exec", p.Exec)
 					case <-ctx.Done():
 						// slog.Debug("Context Done", "exec", p.Exec)
@@ -118,7 +118,7 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 		}
 
 		if err != nil {
-			slog.Error("Running Command", "exec", p.Exec, "err", err)
+			slog.Error("Executing command", "command", p.Exec, "err", err)
 			cancel()
 		}
 	}
@@ -130,9 +130,6 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 func (pm *ProcessManager) KillProcesses() {
 	// slog.Debug("Killing Processes")
 	for _, p := range pm.Processes {
-		if p.pgid == 0 {
-			continue
-		}
 		err := taskKill(p.pid)
 		if err != nil {
 			// slog.Error("Error killing process", "pid", p.cmd.Process.Pid, "err", err.Error())
