@@ -1,12 +1,21 @@
 package engine
 
 import (
+	"log/slog"
+	"path/filepath"
 	"unicode/utf8"
 )
 
 func patternMatch(path string, PatternMap []string) bool {
+	path = filepath.ToSlash(path)
 	for _, pattern := range PatternMap {
-		if patternCompare(pattern, path) {
+		pattern = filepath.ToSlash(pattern)
+		matched, err := filepath.Match(pattern, path)
+		if err != nil {
+			slog.Error("Error matching filepath", "err", err)
+			return false
+		}
+		if matched {
 			// slog.Debug(fmt.Sprintf("Ignore Pattern Match: %s with %s", path, pattern))
 			return true
 		}

@@ -14,3 +14,5 @@
 "test/dir*/*test.go" "test/dir1/1test1.go" false
 "test/dir*/*test.go" "test/dir2/2test.go" true
 "*.go" "/home/atterpac/projects/gotato/example/test/main.go" true
+
+"*\manifest\manifest.go" "D:\projects\wailsapp\internal\manifest\manifest.go" true
