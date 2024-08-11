@@ -94,6 +94,7 @@ func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore
 	}
 	engine.ProcessManager = process.NewProcessManager()
 	engine.generateProcess()
+	_ = engine.ProcessManager.SetRootDirectory(engine.Config.RootPath)
 	return engine, nil
 }
 
@@ -107,6 +108,7 @@ func NewEngineFromConfig(options Config) (*Engine, error) {
 	}
 	engine.ProcessManager = process.NewProcessManager()
 	engine.generateProcess()
+	_ = engine.ProcessManager.SetRootDirectory(engine.Config.RootPath)
 	return engine, nil
 }
 
@@ -149,6 +151,7 @@ func NewEngineFromYAML(confPath string) (*Engine, error) {
 	}
 	engine.ProcessManager = process.NewProcessManager()
 	engine.generateProcess()
+	_ = engine.ProcessManager.SetRootDirectory(engine.Config.RootPath)
 	return &engine, nil
 }
 

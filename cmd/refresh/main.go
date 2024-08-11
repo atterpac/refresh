@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -43,18 +44,20 @@ func main() {
 		fmt.Println(PrintBanner(version))
 		os.Exit(0)
 	}
+	var watch *refresh.Engine
 
 	if len(configPath) != 0 {
 		// If toml vs yaml
 		var err error
-		var watch *refresh.Engine
 		if strings.Contains(configPath, ".toml") {
 			watch, err = refresh.NewEngineFromTOML(configPath)
 		} else if strings.Contains(configPath, ".yaml") {
 			watch, err = refresh.NewEngineFromYAML(configPath)
 		}
 		if err != nil {
-		} else {
+			slog.Error("Error reading config file", "err", err)
+		}
+	} else {
 			ignore := refresh.Ignore{
 				File:         strings.Split(ignoreFile, ","),
 				Dir:          strings.Split(ignoreDir, ","),
@@ -81,12 +84,11 @@ func main() {
 			}
 		}
 
-		err = watch.Start()
+		err := watch.Start()
 		if err != nil {
 			os.Exit(1)
 		}
 		<-make(chan struct{})
-	}
 }
 
 func PrintBanner(ver string) string {

@@ -14,6 +14,8 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	if len(pm.Processes) == 0 {
+		slog.Warn("No Processes to Start")
+		os.Exit(1)
 		return
 	}
 	for _, p := range pm.Processes {
@@ -61,8 +63,6 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				pm.FirstRun = false
 			}
 		}
-		pm.ChangeExecuteDirectory(p.Dir)
-		defer pm.RestoreRootDirectory()
 		var err error
 		if p.Type == Blocking || p.Type == Once {
 			if !pm.FirstRun && p.Type == Once {
@@ -74,13 +74,16 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				slog.Error("Getting Stdout Pipe", "exec", p.Exec, "err", err)
 			}
 			go printSubProcess(ctx, p.logPipe)
+			pm.ChangeExecuteDirectory(p.Dir)
 			err = cmd.Run()
 			if err != nil {
 				slog.Error("Running Command", "exec", p.Exec, "err", err)
 				cancel()
+				pm.RestoreRootDirectory()
 				return
 			}
 			slog.Debug("Process completed closing context", "exec", p.Exec)
+			pm.RestoreRootDirectory()
 			ctx.Done()
 		} else {
 			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
@@ -90,12 +93,15 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 				slog.Error("Getting Stdout Pipe", "exec", p.Exec, "err", err)
 			}
 			go printSubProcess(ctx, p.logPipe)
+			pm.ChangeExecuteDirectory(p.Dir)
 			err = cmd.Start()
 			if cmd.Process == nil {
 				slog.Error("Primary process not running", "exec", p.Exec)
 				cancel()
+				pm.RestoreRootDirectory()
 				continue
 			}
+			pm.RestoreRootDirectory()
 			p.pgid, _ = syscall.Getpgid(cmd.Process.Pid)
 			p.pid = cmd.Process.Pid
 
