@@ -91,19 +91,29 @@ func (pm *ProcessManager) RestoreRootDirectory() error {
 
 func printSubProcess(ctx context.Context, pipe io.ReadCloser) {
 	scanner := bufio.NewScanner(pipe)
-	for {
-		select {
-		case <-ctx.Done():
-			slog.Debug("Context closed, stopping printSubProcess")
-			return
-		default:
-			if !scanner.Scan() {
-				if err := scanner.Err(); err != nil {
-					slog.Debug("Scanner error", "err", err)
-				}
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+		for scanner.Scan() {
+			select {
+			case <-ctx.Done():
 				return
+			default:
+				fmt.Println(scanner.Text())
 			}
-			fmt.Println(scanner.Text())
 		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		// Context was canceled, try to close the pipe
+		pipe.Close()
+	case <-done:
+		// Scanner finished naturally
+	}
+
+	if err := scanner.Err(); err != nil && err != io.EOF && !errors.Is(err, os.ErrClosed) {
+		slog.Debug("Scanner error", "err", err)
 	}
 }

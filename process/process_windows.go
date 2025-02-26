@@ -32,29 +32,24 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 
 		if p.Type == Primary {
 			if !pm.FirstRun {
-				// slog.Debug("Not first run, killing processes")
 				for _, pr := range pm.Processes {
 					if pr.Type != Background {
 						// check if pid is running
 						if pr.pid != 0 {
-							_, err := os.FindProcess(pr.pid)
-							if err != nil {
-								// slog.Debug("Process not running", "exec", pr.Exec)
-								continue
+							if _, err := os.FindProcess(pr.pid); err == nil {
+								if cancel, exists := pm.Cancels[pr.Exec]; exists {
+									cancel()
+									delete(pm.Ctxs, pr.Exec)
+									delete(pm.Cancels, pr.Exec)
+								}
+
+								time.Sleep(100 * time.Millisecond)
+
+								if err := taskKill(pr.pid); err != nil {
+									slog.Debug("Failed to kill process", "exec", pr.Exec, "pid", pr.pid, "err", err)
+								}
 							}
 						}
-						// slog.Debug("Checking for stale process", "exec", pr.Exec)
-						delete(pm.Ctxs, pr.Exec)
-						delete(pm.Cancels, pr.Exec)
-
-						// Wait for the process to terminate
-						select {
-						case <-ctx.Done():
-							// slog.Debug("Process terminated", "exec", pr.Exec)
-						case <-time.After(100 * time.Millisecond):
-							// slog.Debug("Process not terminated... killing", "exec", pr.Exec)
-						}
-						taskKill(pr.pid)
 					}
 				}
 				// slog.Debug("Processes killed")
@@ -74,46 +69,77 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			}
 			cmd.Stderr = os.Stderr
 			p.logPipe, err = cmd.StdoutPipe()
-			go printSubProcess(ctx, p.logPipe)
+			if err != nil {
+				slog.Error("Getting stdout pipe", "exec", p.Exec, "err", err)
+				pm.RestoreRootDirectory()
+				cancel()
+				return
+			}
+
+			subProcessCtx, subProcessCancel := context.WithCancel(ctx)
+			go printSubProcess(subProcessCtx, p.logPipe)
+
 			err = cmd.Run()
+			subProcessCancel()
+
 			if err != nil {
 				slog.Error("Running Command", "exec", p.Exec, "err", err)
+				pm.RestoreRootDirectory()
 				cancel()
 				return
 			}
 		} else {
 			cmd.Stderr = os.Stderr
 			p.logPipe, err = cmd.StdoutPipe()
-			go printSubProcess(ctx, p.logPipe)
-			err = cmd.Start()
 			if err != nil {
 				slog.Error("Getting Stdout Pipe", "exec", p.Exec, "err", err)
+				pm.RestoreRootDirectory()
+				cancel()
+				return
 			}
+
+			err = cmd.Start()
+			if err != nil {
+				slog.Error("Starting command", "exec", p.Exec, "err", err)
+				pm.RestoreRootDirectory()
+				cancel()
+				return
+			}
+
 			if cmd.Process != nil {
 				p.pid = cmd.Process.Pid
 				processCtx, processCancel := context.WithCancel(ctx)
 				pm.Ctxs[p.Exec] = processCtx
 				pm.Cancels[p.Exec] = processCancel
 
-				go func() {
+				subProcessCtx, subProcessCancel := context.WithCancel(processCtx)
+				go printSubProcess(subProcessCtx, p.logPipe)
+
+				go func(exec string, pid int, subCancel context.CancelFunc) {
+					defer subCancel()
+
 					select {
 					case <-processCtx.Done():
-						// slog.Warn("Killing Process", "exec", p.Exec, "pgid", p.pgid, "pid", p.pid)
-						ctx.Done()
-						// slog.Debug("Process Terminated", "exec", p.Exec)
+						if err := taskKill(pid); err != nil {
+							slog.Debug("Failed to kill process after context done", "exec", exec, "pid", pid, "err", err)
+						}
 					case <-ctx.Done():
-						// slog.Debug("Context Done", "exec", p.Exec)
-						taskKill(p.pid)
+						if err := taskKill(pid); err != nil {
+							slog.Debug("Failed to kill process after parent context done", "exec", exec, "pid", pid, "err", err)
+						}
 					default:
 						err := cmd.Wait()
 						if err != nil {
+							slog.Error("Process exited with error", "exec", exec, "err", err)
 							cancel()
 						}
-						// slog.Debug("Process Done", "exec", p.Exec)
-						delete(pm.Ctxs, p.Exec)
-						delete(pm.Cancels, p.Exec)
+
+						pm.mu.Lock()
+						delete(pm.Ctxs, exec)
+						delete(pm.Cancels, exec)
+						pm.mu.Unlock()
 					}
-				}()
+				}(p.Exec, p.pid, subProcessCancel)
 			}
 		}
 
