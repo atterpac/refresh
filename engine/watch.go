@@ -5,6 +5,8 @@ package engine
 
 import (
 	"context"
+	"log/slog"
+
 	// "log/slog"
 	"os"
 	"path/filepath"
@@ -37,7 +39,7 @@ func NewEventManager(engine *Engine, debounce int) *EventManager {
 func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 	eventInfo, ok := EventMap[ei.Event()]
 	if !ok {
-		// slog.Error("Unknown event", "event", ei.Event())
+		slog.Error("Unknown event", "event", ei.Event())
 		return
 	}
 
@@ -68,11 +70,11 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 		if em.engine.Config.Ignore.shouldIgnore(ei.Path()) {
 			return
 		}
-		// slog.Debug("Event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+		slog.Debug("Event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
 		currentTime := time.Now()
 		if currentTime.Sub(em.lastEventTime) >= em.debounceThreshold {
-			// slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
-			// slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
+			slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
+			slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
 
 			// Find the specific process associated with the file change event
 			for _, p := range em.engine.ProcessManager.Processes {
@@ -111,12 +113,17 @@ func (em *EventManager) HandleEvent(ei notify.EventInfo) {
 }
 
 func (engine *Engine) watch(eventManager *EventManager) {
-	// slog.Info("Watching", "path", engine.Config.RootPath)
-	engine.Chan = make(chan notify.EventInfo, 1)
+	engine.Chan = make(chan notify.EventInfo, 5)
 	defer notify.Stop(engine.Chan)
 
-	if err := notify.Watch(engine.Config.RootPath+"/...", engine.Chan, notify.All); err != nil {
-		// slog.Error("Watch Error", "err", err.Error())
+	wd, err := os.Getwd()
+	if err != nil {
+		slog.Error("Getting working directory")
+		return
+	}
+
+	if err := notify.Watch(wd+"/...", engine.Chan, notify.All); err != nil {
+		slog.Error("Watch Error", "err", err.Error())
 		return
 	}
 

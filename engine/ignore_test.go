@@ -32,3 +32,61 @@ func Test_patternCompare(t *testing.T) {
 		}
 	}
 }
+
+func Test_isWatchedExtension(t *testing.T) {
+	tests := []struct {
+		name          string
+		path          string
+		watchedExten  []string
+		wantIsWatched bool
+	}{
+		{
+			name:          "go file with full path should match *.go",
+			path:          "/Users/atterpac/projects/atterpac/refresh/example/test/monitored/ignore.go",
+			watchedExten:  []string{"*.go"},
+			wantIsWatched: true,
+		},
+		{
+			name:          "go file with just extension match",
+			path:          "/some/path/file.go",
+			watchedExten:  []string{".go"},
+			wantIsWatched: true,
+		},
+		{
+			name:          "go file with *extension match",
+			path:          "/some/path/file.go",
+			watchedExten:  []string{"*.go"},
+			wantIsWatched: true,
+		},
+		{
+			name:          "txt file should not match go patterns",
+			path:          "/some/path/file.txt",
+			watchedExten:  []string{"*.go", ".go"},
+			wantIsWatched: false,
+		},
+		{
+			name:          "multiple extensions",
+			path:          "/some/path/file.js",
+			watchedExten:  []string{"*.go", "*.js", "*.html"},
+			wantIsWatched: true,
+		},
+		{
+			name:          "no extension in path",
+			path:          "/some/path/noextension",
+			watchedExten:  []string{"*.go", "*.js"},
+			wantIsWatched: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			i := &Ignore{
+				WatchedExten: tt.watchedExten,
+			}
+			got := i.isWatchedExtension(tt.path)
+			if got != tt.wantIsWatched {
+				t.Errorf("isWatchedExtension() = %v, want %v", got, tt.wantIsWatched)
+			}
+		})
+	}
+}

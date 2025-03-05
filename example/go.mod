@@ -1,6 +1,6 @@
 module example
 
-go 1.21.1
+go 1.24.0
 
 require github.com/atterpac/refresh v0.1.0
 

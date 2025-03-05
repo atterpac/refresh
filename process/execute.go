@@ -8,15 +8,15 @@ import (
 )
 
 type Execute struct {
-	Cmd       string `toml:"cmd" yaml:"cmd"`               // Execute command
-	ChangeDir string `toml:"dir" yaml:"dir"`               // If directory needs to be changed to call this command relative to the root path
+	Cmd       string `toml:"cmd"        yaml:"cmd"`        // Execute command
+	ChangeDir string `toml:"dir"        yaml:"dir"`        // If directory needs to be changed to call this command relative to the root path
 	DelayNext int    `toml:"delay_next" yaml:"delay_next"` // Delay in milliseconds before running command
 	// Type can have one of a few types to define how it reacts to a file change
 	// background -- runs once at startup and is killed when refresh is canceled
 	// once -- runs once at refresh startup but is blocking
 	// blocking -- runs every refresh cycle as a blocking process
 	// primary -- Is the primary process that kills the previous processes before running
-	Type string `toml:"type" yaml:"type"`
+	Type ExecuteType `toml:"type"       yaml:"type"`
 }
 
 type ExecuteType string
@@ -53,7 +53,7 @@ func stringToExecuteType(typing string) (ExecuteType, error) {
 		return Blocking, nil
 	case "primary":
 		return Primary, nil
-	default: 
+	default:
 		return "", errors.New(fmt.Sprintf("Execute type of %s, is invalid", typing))
 	}
 }

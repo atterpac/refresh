@@ -1,15 +1,16 @@
 package engine
 
 import (
+	"log/slog"
 	"path/filepath"
 	"strings"
 )
 
 type Ignore struct {
-	Dir          []string `toml:"dir" yaml:"dir"`
-	File         []string `toml:"file" yaml:"file"`
+	Dir          []string `toml:"dir"               yaml:"dir"`
+	File         []string `toml:"file"              yaml:"file"`
 	WatchedExten []string `toml:"watched_extension" yaml:"watched_extension"`
-	IgnoreGit    bool     `toml:"git" yaml:"git"`
+	IgnoreGit    bool     `toml:"git"               yaml:"git"`
 }
 
 type ignoreMap struct {
@@ -37,22 +38,32 @@ type ignoreMap struct {
 // }
 
 func (i *Ignore) shouldIgnore(path string) bool {
-	if isIgnoreDir(path, i.Dir) {
-		return true
-	}
-	if patternMatch(path, i.Dir) {
-		return true
-	}
-	if patternMatch(path, i.File) {
-		return true
-	}
 	if i.isWatchedExtension(path) {
+		slog.Debug("Checking Watched Extension", "path", path)
+		if isIgnoreDir(path, i.Dir) ||
+			patternMatch(path, i.Dir) ||
+			patternMatch(path, i.File) {
+			return true
+		}
 		return false
 	}
 	return true
 }
 
 func (i *Ignore) isWatchedExtension(path string) bool {
+	ext := filepath.Ext(path)
+	if ext == "" {
+		return false
+	}
+
+	// First check for direct extension matches (e.g., ".go")
+	for _, watchedExt := range i.WatchedExten {
+		if watchedExt == ext || watchedExt == "*"+ext {
+			return true
+		}
+	}
+
+	// Then try pattern matching for more complex patterns
 	return patternMatch(path, i.WatchedExten)
 }
 
@@ -82,6 +93,7 @@ func isIgnoreDir(path string, rules []string) bool {
 	for _, dir := range dirs {
 		for _, rule := range rules {
 			if dir == rule {
+				slog.Debug("Ignore Dir", "dir", dir)
 				return true
 			}
 		}

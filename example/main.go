@@ -4,28 +4,26 @@ import (
 	"time"
 
 	refresh "github.com/atterpac/refresh/engine"
+	"github.com/atterpac/refresh/process"
 )
 
 func main() {
-	background := refresh.Execute{
+	background := process.Execute{
 		Cmd: "pwd",
 	}
-	tidy := refresh.Execute{
-		Cmd:        "go mod tidy",
-		IsBlocking: true,
-		IsPrimary:  false,
+	tidy := process.Execute{
+		Cmd:  "go mod tidy",
+		Type: process.Background,
 	}
-	build := refresh.Execute{
-		Cmd:        "go build -o ./bin/myapp",
-		IsBlocking: true,
-		IsPrimary:  false,
+	build := process.Execute{
+		Cmd:  "go build -o ./bin/myapp",
+		Type: process.Blocking,
 	}
-	kill := refresh.KILL_STALE
-	run := refresh.Execute{
-		Cmd:        "./myapp",
-		ChangeDir:  "./binn",
-		IsBlocking: false,
-		IsPrimary:  true,
+	kill := process.KILL_STALE
+	run := process.Execute{
+		Cmd:       "./myapp",
+		ChangeDir: "./binn",
+		Type:      process.Primary,
 	}
 	ignore := refresh.Ignore{
 		File:         []string{"ignore.go"},
@@ -40,18 +38,21 @@ func main() {
 		Ignore:     ignore,
 		Debounce:   1000,
 		LogLevel:   "debug",
-		ExecStruct: []refresh.Execute{tidy, build, kill, run},
+		ExecStruct: []process.Execute{tidy, build, kill, run},
 		Slog:       nil,
 	}
 
 	// watch := refresh.NewEngineFromConfig(config)
-	watch := refresh.NewEngineFromTOML("./example.toml")
+	watch, err := refresh.NewEngineFromYAML("./example.yaml")
+	if err != nil {
+		panic(err)
+	}
 
 	watch.AttachBackgroundCallback(func() bool {
 		time.Sleep(5000 * time.Millisecond)
 		return true
 	})
-	err := watch.Start()
+	err = watch.Start()
 	if err != nil {
 		panic(err)
 	}

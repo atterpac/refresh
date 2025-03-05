@@ -15,14 +15,14 @@ import (
 )
 
 type Config struct {
-	RootPath           string            `toml:"root_path" yaml:"root_path"`
+	RootPath           string            `toml:"root_path"  yaml:"root_path"`
 	BackgroundStruct   process.Execute   `toml:"background" yaml:"background"`
-	BackgroundCallback func() bool       `toml:"-" yaml:"-"`
-	Ignore             Ignore            `toml:"ignore" yaml:"ignore"`
-	ExecStruct         []process.Execute `toml:"executes" yaml:"executes"`
-	ExecList           []string          `toml:"exec_list" yaml:"exec_list"`
-	LogLevel           string            `toml:"log_level" yaml:"log_level"`
-	Debounce           int               `toml:"debounce" yaml:"debounce"`
+	BackgroundCallback func() bool       `toml:"-"          yaml:"-"`
+	Ignore             Ignore            `toml:"ignore"     yaml:"ignore"`
+	ExecStruct         []process.Execute `toml:"executes"   yaml:"executes"`
+	ExecList           []string          `toml:"exec_list"  yaml:"exec_list"`
+	LogLevel           string            `toml:"log_level"  yaml:"log_level"`
+	Debounce           int               `toml:"debounce"   yaml:"debounce"`
 	Callback           func(*EventCallback) EventHandle
 	Slog               *slog.Logger
 	ignoreMap          ignoreMap
@@ -165,6 +165,6 @@ func changeWorkingDirectory(path string) {
 
 func (e *Engine) generateProcess() {
 	for _, ex := range e.Config.ExecStruct {
-		e.ProcessManager.AddProcess(ex.Cmd, ex.Type, ex.ChangeDir)
+		e.ProcessManager.AddProcess(ex.Cmd, string(ex.Type), ex.ChangeDir)
 	}
 }

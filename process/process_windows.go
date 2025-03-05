@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -14,6 +15,22 @@ import (
 func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.CancelFunc) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
+
+	// Store the original directory to ensure we restore it at the end of function
+	originalDir, err := os.Getwd()
+	if err != nil {
+		slog.Error("Failed to get current working directory", "err", err)
+		// If we can't get the current directory, use our saved RootDir
+		originalDir = pm.RootDir
+	}
+
+	// Ensure we always restore the original directory when this function exits
+	defer func() {
+		err := os.Chdir(originalDir)
+		if err != nil {
+			slog.Error("Failed to restore original directory", "dir", originalDir, "err", err)
+		}
+	}()
 
 	if len(pm.Processes) == 0 {
 		// slog.Warn("No Processes to Start")
@@ -60,8 +77,24 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			}
 			// Log buffers
 		}
-		pm.ChangeExecuteDirectory(p.Dir)
-		defer pm.RestoreRootDirectory()
+
+		// Change to the command's directory if specified
+		if p.Dir != "" {
+			targetDir := p.Dir
+			if !filepath.IsAbs(p.Dir) {
+				// If relative path, make it relative to RootDir
+				targetDir = filepath.Join(pm.RootDir, p.Dir)
+			}
+			currentDir, _ := os.Getwd()
+			slog.Debug("Changing directory for process", "from", currentDir, "to", targetDir, "process", p.Exec)
+			err = os.Chdir(targetDir)
+			if err != nil {
+				slog.Error("Failed to change directory", "dir", targetDir, "err", err)
+				cancel()
+				continue
+			}
+		}
+
 		var err error
 		if p.Type == Blocking || p.Type == Once {
 			if p.Type == Once && !pm.FirstRun {
@@ -71,9 +104,8 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 			p.logPipe, err = cmd.StdoutPipe()
 			if err != nil {
 				slog.Error("Getting stdout pipe", "exec", p.Exec, "err", err)
-				pm.RestoreRootDirectory()
 				cancel()
-				return
+				continue
 			}
 
 			subProcessCtx, subProcessCancel := context.WithCancel(ctx)
@@ -84,26 +116,23 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 
 			if err != nil {
 				slog.Error("Running Command", "exec", p.Exec, "err", err)
-				pm.RestoreRootDirectory()
 				cancel()
-				return
+				continue
 			}
 		} else {
 			cmd.Stderr = os.Stderr
 			p.logPipe, err = cmd.StdoutPipe()
 			if err != nil {
 				slog.Error("Getting Stdout Pipe", "exec", p.Exec, "err", err)
-				pm.RestoreRootDirectory()
 				cancel()
-				return
+				continue
 			}
 
 			err = cmd.Start()
 			if err != nil {
 				slog.Error("Starting command", "exec", p.Exec, "err", err)
-				pm.RestoreRootDirectory()
 				cancel()
-				return
+				continue
 			}
 
 			if cmd.Process != nil {
@@ -140,12 +169,17 @@ func (pm *ProcessManager) StartProcess(ctx context.Context, cancel context.Cance
 						pm.mu.Unlock()
 					}
 				}(p.Exec, p.pid, subProcessCancel)
+			} else {
+				slog.Error("Process did not start properly", "exec", p.Exec)
+				cancel()
+				continue
 			}
 		}
 
+		// After each process, restore to the original directory
+		err = os.Chdir(originalDir)
 		if err != nil {
-			slog.Error("Executing command", "command", p.Exec, "err", err)
-			cancel()
+			slog.Error("Failed to restore directory after process", "dir", originalDir, "err", err)
 		}
 	}
 

@@ -1,0 +1,27 @@
+# Sample configuration for refresh
+root_path: "./src"
+log_level: "debug"
+debounce: 500
+
+ignore:
+  dir: [".git", "node_modules", "vendor"]
+  file: [".gitignore", ".DS_Store"]
+  watched_extension: ["*.go", "*.js", "*.ts", "*.jsx", "*.tsx", "*.html", "*.css"]
+  git_ignore: true
+
+# Define processes to run
+executes:
+  - cmd: "go run main.go"
+    type: "primary"
+    change_dir: "./src"
+  
+  - cmd: "npm run watch"
+    type: "background"
+    change_dir: "./frontend"
+    
+  - cmd: "go generate ./..."
+    type: "once"
+    
+  - cmd: "go test ./..."
+    type: "blocking"
+    timeout: 30 

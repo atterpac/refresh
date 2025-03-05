@@ -1,7 +1,7 @@
 config:
   label: My Project
-  root_path: ./test
-  log_level: info
+  root_path: test
+  log_level: debug
   debounce: 1000
   ignore:
     dir:
