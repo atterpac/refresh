@@ -1,5 +1,5 @@
-//go:build windows || linux || darwin
-// +build windows linux darwin
+//go:build windows || linux || darwin || freebsd
+// +build windows linux darwin freebsd
 
 package engine
 
