@@ -29,6 +29,64 @@ type Config struct {
 	externalSlog       bool
 }
 
+func DefaultEngineConfig() Config {
+	return Config{
+		RootPath: ".",
+		LogLevel: "warn",
+		Debounce: 1000,
+		Ignore: Ignore{
+			Dir:       []string{".git", ".idea", ".node_modules", "vendor"},
+			File:      []string{".DS_Store", ".gitignore", ".gitkeep"},
+			IgnoreGit: true,
+		},
+		ExecStruct: make([]process.Execute, 0),
+	}
+}
+
+func (c *Config) WithRootPath(path string) *Config {
+	c.RootPath = path
+	return c
+}
+
+func (c *Config) WithLogLevel(level string) *Config {
+	c.LogLevel = level
+	return c
+}
+
+func (c *Config) WithDebounce(value int) *Config {
+	c.Debounce = value
+	return c
+}
+
+func (c *Config) WithIgnore(ignore Ignore) *Config {
+	c.Ignore = ignore
+	return c
+}
+
+func (c *Config) WithIgnoreDirs(dir []string) *Config {
+	c.Ignore.Dir = dir
+	return c
+}
+func (c *Config) WithIgnoreFiles(files []string) *Config {
+	c.Ignore.File = files
+	return c
+}
+
+func (c *Config) WithIgnoreGit(truthy bool) *Config {
+	c.Ignore.IgnoreGit = truthy
+	return c
+}
+
+func (c *Config) WithWatchedExtensions(extensions []string) *Config {
+	c.Ignore.WatchedExten = extensions
+	return c
+}
+
+func (c *Config) WithExecuteCommand(cmd process.Execute) *Config {
+	c.ExecStruct = append(c.ExecStruct, cmd)
+	return c
+}
+
 // Reads a config.toml file and returns the engine
 func (engine *Engine) readConfigFile(path string) (*Engine, error) {
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
