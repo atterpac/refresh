@@ -1,2 +1,8 @@
-
 dist/
+
+# Build artifacts — never commit compiled binaries
+/app
+example/test/app
+example/test/bin/
+bin/
+*.exe

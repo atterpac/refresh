@@ -90,7 +90,7 @@ func (c *Config) WithExecuteCommand(cmd process.Execute) *Config {
 // Reads a config.toml file and returns the engine
 func (engine *Engine) readConfigFile(path string) (*Engine, error) {
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
-		slog.Error("Error reading config file", err)
+		slog.Error("reading config file", "path", path, "err", err)
 		return nil, err
 	}
 	return engine, nil
@@ -99,13 +99,12 @@ func (engine *Engine) readConfigFile(path string) (*Engine, error) {
 func (engine *Engine) readConfigYaml(path string) (*Engine, error) {
 	file, err := os.ReadFile(path)
 	if err != nil {
-		slog.Error("Error reading config file", err)
+		slog.Error("reading config file", "path", path, "err", err)
 		return nil, err
 	}
 	err = yaml.Unmarshal(file, &engine)
 	if err != nil {
-		slog.Error("Error reading config file", err)
-		slog.Error(err.Error())
+		slog.Error("parsing yaml config", "path", path, "err", err)
 		return nil, err
 	}
 	return engine, nil
@@ -114,18 +113,15 @@ func (engine *Engine) readConfigYaml(path string) (*Engine, error) {
 func (engine *Engine) StringtoConfigYAML(yamlString string) error {
 	err := yaml.Unmarshal([]byte(yamlString), &engine)
 	if err != nil {
-		slog.Error("Error reading config file", err)
-		slog.Error(err.Error())
+		slog.Error("parsing yaml config string", "err", err)
 		return err
 	}
 	return nil
 }
 
 func (engine *Engine) StringtoConfigTOML(tomlString string) error {
-	err := yaml.Unmarshal([]byte(tomlString), &engine)
-	if err != nil {
-		slog.Error("Error reading config file", err)
-		slog.Error(err.Error())
+	if _, err := toml.Decode(tomlString, &engine); err != nil {
+		slog.Error("parsing toml config string", "err", err)
 		return err
 	}
 	return nil
