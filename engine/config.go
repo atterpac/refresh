@@ -14,16 +14,15 @@ import (
 )
 
 type Config struct {
-	RootPath           string            `toml:"root_path"  yaml:"root_path"`
-	BackgroundStruct   process.Execute   `toml:"background" yaml:"background"`
-	BackgroundCallback func() bool       `toml:"-"          yaml:"-"`
-	Ignore             Ignore            `toml:"ignore"     yaml:"ignore"`
-	ExecStruct         []process.Execute `toml:"executes"   yaml:"executes"`
-	ExecList           []string          `toml:"exec_list"  yaml:"exec_list"`
-	LogLevel           string            `toml:"log_level"  yaml:"log_level"`
-	Debounce           int               `toml:"debounce"   yaml:"debounce"`
-	Callback           func(*EventCallback) EventHandle
-	Slog               *slog.Logger
+	RootPath         string            `toml:"root_path"  yaml:"root_path"`
+	BackgroundStruct process.Execute   `toml:"background" yaml:"background"`
+	Ignore           Ignore            `toml:"ignore"     yaml:"ignore"`
+	ExecStruct       []process.Execute `toml:"executes"   yaml:"executes"`
+	ExecList         []string          `toml:"exec_list"  yaml:"exec_list"`
+	LogLevel         string            `toml:"log_level"  yaml:"log_level"`
+	Debounce         int               `toml:"debounce"   yaml:"debounce"`
+	Callback         func(*EventCallback) EventHandle
+	Slog             *slog.Logger
 }
 
 func DefaultEngineConfig() Config {

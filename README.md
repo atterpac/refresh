@@ -39,7 +39,7 @@ These declarations let refresh know when you would like to kill the stale proces
 Whatever command after REFRESH is considered your "main" subprocess and the one that is tracked inside of refresh
 
 ## Embedding into your dev project
-There can be some uses where you might want to start a watcher internally or for a tool for development refresh provides a function `NewEngineFromOptions` which takes an `engine.Config` and allows for the `engine.Start()` function
+There can be some uses where you might want to start a watcher internally or for a tool for development refresh provides `NewEngineFromConfig`, which takes an `engine.Config` and returns an engine you can `Start()`.
 
 Using refresh as a library also opens the ability to add a [Callback](https://github.com/atterpac/refresh#reload-callback) function that is called on every FS notification
 
@@ -312,15 +312,6 @@ dir="./bin"
 cmd="./app"
 primary=true
 ```
-
-### Background Check Callback
-There are instances where you want to wait for the "build" steps for something like vite or a server connection that could take a varying amount
-of time to reach a ready state. Refresh adds `engine.AttachBackgroundCallback()` which will hault the execute commands until the callback returns 
-true (or false for error and shutting down). This could be used along side a ping to the vite port for example to ensure it is reached before 
-running commands that rely on it. This requires 2 things
-
--  A callback function that is `func() bool` and returns true when ready and false when errored or exited 
--  Attaching the callback via `engine.AttachBackgroundCallback()` prior to running `engine.Start()`
 
 #### Flags
 This method is possible but not the most verbose and controlled way to use refresh

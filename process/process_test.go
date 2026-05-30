@@ -131,6 +131,48 @@ func TestStartWithNoProcessesErrors(t *testing.T) {
 	}
 }
 
+func TestOnceFailureAbortsStartup(t *testing.T) {
+	pm := NewProcessManager()
+	if err := pm.SetRootDirectory(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	if err := pm.AddProcess("false", "once", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := pm.AddProcess("sleep 30", "primary", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := pm.Start(ctx); err == nil {
+		t.Fatal("expected Start to fail when a once step exits non-zero")
+	}
+	if pm.Processes[1].cmd != nil {
+		t.Error("primary should not have started after a once failure")
+	}
+	pm.Shutdown()
+}
+
+func TestStartAsyncFailsOnMissingDirectory(t *testing.T) {
+	pm := NewProcessManager()
+	if err := pm.SetRootDirectory(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	// A ChangeDir that does not exist makes exec.Cmd.Start fail, exercising the
+	// startAsync error path.
+	if err := pm.AddProcess("sleep 30", "primary", "does-not-exist"); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := pm.Start(ctx); err == nil {
+		t.Fatal("expected Start to fail when the working directory is missing")
+	}
+	pm.Shutdown()
+}
+
 func TestBlockingFailureAbortsCycle(t *testing.T) {
 	root := t.TempDir()
 	pm := NewProcessManager()

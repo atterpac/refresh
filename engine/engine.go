@@ -128,18 +128,6 @@ func (engine *Engine) SetLogger(logger *slog.Logger) {
 	slog.SetDefault(engine.log.logger)
 }
 
-// Deprecated: NewEngine predates the Config-based constructors and does not wire
-// up the full lifecycle. Use NewEngineFromConfig instead.
-func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore Ignore, debounce int, chunkSize string) (*Engine, error) {
-	return NewEngineFromConfig(Config{
-		RootPath: rootPath,
-		ExecList: execList,
-		LogLevel: logLevel,
-		Ignore:   ignore,
-		Debounce: debounce,
-	})
-}
-
 func NewEngineFromConfig(options Config) (*Engine, error) {
 	engine := &Engine{}
 	engine.Config = options
@@ -182,11 +170,6 @@ func NewEngineFromYAML(confPath string) (*Engine, error) {
 	engine.generateProcess()
 	_ = engine.ProcessManager.SetRootDirectory(engine.Config.RootPath)
 	return engine, nil
-}
-
-func (engine *Engine) AttachBackgroundCallback(callback func() bool) *Engine {
-	engine.Config.BackgroundCallback = callback
-	return engine
 }
 
 // trapSignals cancels the engine context on the first interrupt/terminate
