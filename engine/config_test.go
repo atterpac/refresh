@@ -94,6 +94,22 @@ func TestBackgroundStructBecomesProcess(t *testing.T) {
 	}
 }
 
+func TestBackgroundTypeIsIgnored(t *testing.T) {
+	// A type set on the background block is dropped: the background command always
+	// registers as a background process regardless of what Type was configured.
+	eng, err := NewEngineFromConfig(Config{
+		RootPath:         ".",
+		BackgroundStruct: process.Execute{Cmd: "echo bg", Type: process.Primary},
+		ExecStruct:       []process.Execute{{Cmd: "./app", Type: process.Primary}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := eng.ProcessManager.Processes[0].Type; got != process.Background {
+		t.Errorf("background process type = %q, want %q (type on the background block must be ignored)", got, process.Background)
+	}
+}
+
 func TestNormalizeExecutesPrefersStruct(t *testing.T) {
 	e := &Engine{Config: Config{
 		RootPath:   ".",

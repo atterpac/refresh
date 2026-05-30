@@ -21,6 +21,7 @@ type cliFlags struct {
 	debounce    int
 	version     bool
 	gitIgnore   bool
+	trapSuspend bool
 	ignoreDir   string
 	ignoreFile  string
 	ignoreExt   string
@@ -40,6 +41,7 @@ func parseFlags(args []string) (cliFlags, error) {
 	fs.IntVar(&f.debounce, "d", 1000, "Debounce time in milliseconds")
 	fs.BoolVar(&f.version, "v", false, "Print version")
 	fs.BoolVar(&f.gitIgnore, "git", false, "Read .gitignore in the root")
+	fs.BoolVar(&f.trapSuspend, "pause", false, "Use Ctrl+Z to toggle pause/resume instead of suspending")
 	if err := fs.Parse(args); err != nil {
 		return f, err
 	}
@@ -64,10 +66,11 @@ func splitList(csv string) []string {
 // toConfig maps the flags to an engine.Config (used when no config file is given).
 func (f cliFlags) toConfig() refresh.Config {
 	return refresh.Config{
-		RootPath: f.rootPath,
-		ExecList: splitList(f.execCommand),
-		LogLevel: f.logLevel,
-		Debounce: f.debounce,
+		RootPath:    f.rootPath,
+		ExecList:    splitList(f.execCommand),
+		LogLevel:    f.logLevel,
+		Debounce:    f.debounce,
+		EnablePause: f.trapSuspend,
 		Ignore: refresh.Ignore{
 			File:         splitList(f.ignoreFile),
 			Dir:          splitList(f.ignoreDir),

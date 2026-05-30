@@ -5,17 +5,19 @@ config:
   root_path: "."
   log_level: "debug"
   debounce: 500
+  # enable_pause: true   # Unix only: Ctrl+Z toggles pause/resume instead of suspending
 
   ignore:
     dir: [".git", "node_modules", "vendor", "bin"]
     file: [".gitignore", ".DS_Store"]
-    watched_extension: ["*.go"]
+    watched_extension: ["*.go"]   # omit to watch every file
     git: true
 
   # Executes run in order. type is one of: background | once | blocking | primary
   executes:
     - cmd: "go build -o ./bin/app ./app"
       type: "blocking"
+      # delay_next: 500   # pause in ms after this step, before the next starts
 
     - cmd: "./bin/app"
       type: "primary"

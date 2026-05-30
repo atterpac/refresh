@@ -32,6 +32,12 @@ func (i *Ignore) shouldIgnore(path string) bool {
 }
 
 func (i *Ignore) isWatchedExtension(path string) bool {
+	// No configured filter means watch everything; this is the default config
+	// and the bare-CLI case, so it must reload rather than ignore every change.
+	if len(i.WatchedExten) == 0 {
+		return true
+	}
+
 	ext := filepath.Ext(path)
 	if ext == "" {
 		return false

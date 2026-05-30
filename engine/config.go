@@ -21,8 +21,13 @@ type Config struct {
 	ExecList         []string          `toml:"exec_list"  yaml:"exec_list"`
 	LogLevel         string            `toml:"log_level"  yaml:"log_level"`
 	Debounce         int               `toml:"debounce"   yaml:"debounce"`
-	Callback         func(*EventCallback) EventHandle
-	Slog             *slog.Logger
+	// EnablePause, when true, repurposes the terminal suspend key (Ctrl+Z /
+	// SIGTSTP) as a pause/resume toggle: the first press pauses reloads, the next
+	// resumes. This overrides the shell's normal "suspend to background" behavior,
+	// so it is opt-in. No-op on platforms without SIGTSTP (Windows).
+	EnablePause bool `toml:"enable_pause" yaml:"enable_pause"`
+	Callback    func(*EventCallback) EventHandle
+	Slog        *slog.Logger
 }
 
 func DefaultEngineConfig() Config {
@@ -51,6 +56,13 @@ func (c *Config) WithLogLevel(level string) *Config {
 
 func (c *Config) WithDebounce(value int) *Config {
 	c.Debounce = value
+	return c
+}
+
+// WithEnablePause opts into using the terminal suspend key (Ctrl+Z / SIGTSTP)
+// as a pause/resume toggle instead of suspending the process.
+func (c *Config) WithEnablePause(truthy bool) *Config {
+	c.EnablePause = truthy
 	return c
 }
 
@@ -128,6 +140,11 @@ func (engine *Engine) verifyConfig() error {
 	slog.Debug("verifying config")
 	if engine.Config.RootPath == "" {
 		return errors.New("root path is required")
+	}
+	// The background block always runs as a background process; a type set on it
+	// is dropped, so warn rather than silently ignore it.
+	if t := engine.Config.BackgroundStruct.Type; t != "" && t != process.Background {
+		slog.Warn("background.type is ignored; the background command always runs as a background process", "ignored_type", t)
 	}
 	engine.normalizeExecutes()
 	if err := engine.verifyExecute(); err != nil {
@@ -240,9 +257,9 @@ func (e *Engine) generateProcess() {
 	// A configured background command is started once at startup, survives
 	// reloads, and is killed on shutdown — regardless of any Type set on it.
 	if bg := e.Config.BackgroundStruct; bg.Cmd != "" {
-		_ = e.ProcessManager.AddProcess(bg.Cmd, string(process.Background), bg.ChangeDir)
+		_ = e.ProcessManager.AddProcessWithDelay(bg.Cmd, string(process.Background), bg.ChangeDir, bg.DelayNext)
 	}
 	for _, ex := range e.Config.ExecStruct {
-		_ = e.ProcessManager.AddProcess(ex.Cmd, string(ex.Type), ex.ChangeDir)
+		_ = e.ProcessManager.AddProcessWithDelay(ex.Cmd, string(ex.Type), ex.ChangeDir, ex.DelayNext)
 	}
 }

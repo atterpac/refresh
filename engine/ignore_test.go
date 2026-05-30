@@ -76,6 +76,18 @@ func Test_isWatchedExtension(t *testing.T) {
 			watchedExten:  []string{"*.go", "*.js"},
 			wantIsWatched: false,
 		},
+		{
+			name:          "empty filter watches all extensions (default config)",
+			path:          "/some/path/file.go",
+			watchedExten:  nil,
+			wantIsWatched: true,
+		},
+		{
+			name:          "empty filter watches extensionless files too",
+			path:          "/some/path/Makefile",
+			watchedExten:  nil,
+			wantIsWatched: true,
+		},
 	}
 
 	for _, tt := range tests {

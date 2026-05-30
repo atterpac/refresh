@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/atterpac/refresh/process"
 )
@@ -69,9 +68,6 @@ func (engine *Engine) Start() error {
 	if engine.Config.Ignore.IgnoreGit {
 		engine.Config.Ignore.gitPatterns = readGitIgnore(engine.Config.RootPath)
 	}
-	if delay := engine.Config.BackgroundStruct.DelayNext; delay > 0 {
-		time.Sleep(time.Duration(delay) * time.Millisecond)
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	engine.ctx = ctx
@@ -95,15 +91,45 @@ func (engine *Engine) Start() error {
 		return err
 	}
 
+	// Optional pause/resume toggle, driven by the suspend key (Ctrl+Z). The
+	// buffered, non-blocking send keeps the toggle from blocking the signal
+	// goroutine and coalesces rapid presses.
+	toggle := make(chan struct{}, 1)
+	if engine.Config.EnablePause {
+		engine.trapControlSignals(toggle)
+	}
+
 	// Supervisor loop: the only goroutine that drives process lifecycle, so the
-	// process manager needs no locking around its runtime state.
+	// process manager needs no locking around its runtime state. paused and
+	// pending live here for the same reason.
+	paused := false
+	pending := false // a reload arrived while paused
+
 	for {
 		select {
 		case <-ctx.Done():
 			engine.ProcessManager.Shutdown()
 			slog.Info("refresh stopped")
 			return nil
+		case <-toggle:
+			paused = !paused
+			if paused {
+				slog.Warn("refresh paused — file changes ignored until resumed")
+				continue
+			}
+			slog.Warn("refresh resumed")
+			if pending {
+				pending = false
+				slog.Info("applying change made while paused, reloading")
+				if err := engine.ProcessManager.Reload(ctx); err != nil {
+					slog.Error("reload failed", "err", err)
+				}
+			}
 		case <-reload:
+			if paused {
+				pending = true
+				continue
+			}
 			slog.Info("change detected, reloading")
 			if err := engine.ProcessManager.Reload(ctx); err != nil {
 				slog.Error("reload failed", "err", err)
