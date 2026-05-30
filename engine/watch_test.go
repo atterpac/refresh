@@ -83,6 +83,40 @@ func TestWatcherDetectsNestedSubdirectoryChanges(t *testing.T) {
 	}
 }
 
+// TestWatcherDefaultConfigReloadsAnyFile guards the default/empty-filter path:
+// with no WatchedExten configured (DefaultEngineConfig and the bare CLI), every
+// change must still trigger a reload. A regression here previously made the
+// out-of-the-box config silently watch nothing.
+func TestWatcherDefaultConfigReloadsAnyFile(t *testing.T) {
+	root := t.TempDir()
+	e := &Engine{Config: Config{
+		RootPath: root,
+		Debounce: 100,
+		Ignore:   Ignore{}, // zero value: no extension filter
+	}}
+	e.ProcessManager = process.NewProcessManager()
+	if err := e.ProcessManager.SetRootDirectory(root); err != nil {
+		t.Fatal(err)
+	}
+
+	reload := make(chan struct{}, 16)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := e.startWatcher(ctx, reload); err != nil {
+		t.Fatalf("startWatcher: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(root, "main.go"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(300 * time.Millisecond)
+	cancel()
+
+	if got := len(reload); got != 1 {
+		t.Errorf("default config produced %d reloads for a .go edit, want 1", got)
+	}
+}
+
 func TestWatcherIgnoresUnwatchedExtensions(t *testing.T) {
 	root := t.TempDir()
 	e := newWatchTestEngine(t, root, 100)
