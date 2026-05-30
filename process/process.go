@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 )
 
 // Process is a single configured command plus the runtime handles for its
@@ -15,6 +16,9 @@ type Process struct {
 	Exec string
 	Type ExecuteType
 	Dir  string
+	// Delay is the pause in milliseconds inserted after this process's step
+	// completes, before the next configured process starts. Zero means no pause.
+	Delay int
 
 	cmd    *exec.Cmd
 	cancel context.CancelFunc
@@ -38,11 +42,18 @@ func NewProcessManager() *ProcessManager {
 }
 
 func (pm *ProcessManager) AddProcess(exec, typing, dir string) error {
+	return pm.AddProcessWithDelay(exec, typing, dir, 0)
+}
+
+// AddProcessWithDelay is AddProcess plus delay, the pause in milliseconds held
+// after this process's step before the next one starts (the delay_next config
+// field).
+func (pm *ProcessManager) AddProcessWithDelay(exec, typing, dir string, delay int) error {
 	execType, err := stringToExecuteType(typing)
 	if err != nil {
 		return err
 	}
-	pm.Processes = append(pm.Processes, &Process{Exec: exec, Type: execType, Dir: dir})
+	pm.Processes = append(pm.Processes, &Process{Exec: exec, Type: execType, Dir: dir, Delay: delay})
 	return nil
 }
 
@@ -143,9 +154,32 @@ func (pm *ProcessManager) runCycle(ctx context.Context, firstRun bool) error {
 				return err
 			}
 		}
+		// Reached only when the step above actually ran (skipped/aborted steps
+		// continue/return before here), so the delay sits strictly between this
+		// process and the next.
+		if !pm.delayNext(ctx, p) {
+			return nil // context cancelled mid-delay — abort the cycle quietly
+		}
 	}
 	pm.started = true
 	return nil
+}
+
+// delayNext holds for the process's configured delay_next before the cycle moves
+// on, letting one step settle (e.g. a service binding a port) before the next
+// starts. The wait is context-aware; it returns false if the context is
+// cancelled during the pause so the caller can stop the cycle.
+func (pm *ProcessManager) delayNext(ctx context.Context, p *Process) bool {
+	if p.Delay <= 0 {
+		return true
+	}
+	slog.Debug("delaying before next process", "exec", p.Exec, "ms", p.Delay)
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(time.Duration(p.Delay) * time.Millisecond):
+		return true
+	}
 }
 
 // startAsync launches a long-lived process (background or primary) in its own

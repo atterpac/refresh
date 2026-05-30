@@ -9,7 +9,7 @@ import (
 type Execute struct {
 	Cmd       string `toml:"cmd"        yaml:"cmd"`        // Execute command
 	ChangeDir string `toml:"dir"        yaml:"dir"`        // If directory needs to be changed to call this command relative to the root path
-	DelayNext int    `toml:"delay_next" yaml:"delay_next"` // Delay in milliseconds before running command
+	DelayNext int    `toml:"delay_next" yaml:"delay_next"` // Pause in ms held after this step completes, before the next process starts
 	// Type can have one of a few types to define how it reacts to a file change
 	// background -- runs once at startup and is killed when refresh is canceled
 	// once -- runs once at refresh startup but is blocking

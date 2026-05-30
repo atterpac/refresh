@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/atterpac/refresh/process"
 )
@@ -68,9 +67,6 @@ func (engine *Engine) Start() error {
 	}
 	if engine.Config.Ignore.IgnoreGit {
 		engine.Config.Ignore.gitPatterns = readGitIgnore(engine.Config.RootPath)
-	}
-	if delay := engine.Config.BackgroundStruct.DelayNext; delay > 0 {
-		time.Sleep(time.Duration(delay) * time.Millisecond)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
