@@ -21,8 +21,13 @@ type Config struct {
 	ExecList         []string          `toml:"exec_list"  yaml:"exec_list"`
 	LogLevel         string            `toml:"log_level"  yaml:"log_level"`
 	Debounce         int               `toml:"debounce"   yaml:"debounce"`
-	Callback         func(*EventCallback) EventHandle
-	Slog             *slog.Logger
+	// EnablePause, when true, repurposes the terminal suspend key (Ctrl+Z /
+	// SIGTSTP) as a pause/resume toggle: the first press pauses reloads, the next
+	// resumes. This overrides the shell's normal "suspend to background" behavior,
+	// so it is opt-in. No-op on platforms without SIGTSTP (Windows).
+	EnablePause bool `toml:"enable_pause" yaml:"enable_pause"`
+	Callback    func(*EventCallback) EventHandle
+	Slog        *slog.Logger
 }
 
 func DefaultEngineConfig() Config {
@@ -51,6 +56,13 @@ func (c *Config) WithLogLevel(level string) *Config {
 
 func (c *Config) WithDebounce(value int) *Config {
 	c.Debounce = value
+	return c
+}
+
+// WithEnablePause opts into using the terminal suspend key (Ctrl+Z / SIGTSTP)
+// as a pause/resume toggle instead of suspending the process.
+func (c *Config) WithEnablePause(truthy bool) *Config {
+	c.EnablePause = truthy
 	return c
 }
 
