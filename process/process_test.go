@@ -5,6 +5,7 @@ package process
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -121,6 +122,29 @@ func TestShellFeaturesAreSupported(t *testing.T) {
 	}
 	if got := string(data); got != "one\ntwo\n" {
 		t.Errorf("shell features not honored, out.txt = %q", got)
+	}
+}
+
+func TestKillProcessTreeNilSafe(t *testing.T) {
+	if err := killProcessTree(nil); err != nil {
+		t.Errorf("killProcessTree(nil) = %v, want nil", err)
+	}
+	if err := killProcessTree(&exec.Cmd{}); err != nil {
+		t.Errorf("killProcessTree on unstarted cmd = %v, want nil", err)
+	}
+}
+
+func TestSetRootDirectoryDefaultsToCwd(t *testing.T) {
+	pm := NewProcessManager()
+	if err := pm.SetRootDirectory(""); err != nil {
+		t.Fatalf("SetRootDirectory(\"\"): %v", err)
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pm.RootDir != wd {
+		t.Errorf("RootDir = %q, want cwd %q", pm.RootDir, wd)
 	}
 }
 

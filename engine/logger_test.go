@@ -63,6 +63,27 @@ func TestDisableEnableLogs(t *testing.T) {
 	}
 }
 
+// TestSwitchHandlerWithAttrsAndGroup ensures the level/enabled switch is
+// preserved through derived handlers created by With and WithGroup.
+func TestSwitchHandlerWithAttrsAndGroup(t *testing.T) {
+	var buf bytes.Buffer
+	d := newCapture("info", &buf)
+
+	derived := d.logger.With("component", "engine").WithGroup("scope")
+	derived.Info("ready", "id", 1)
+	if !strings.Contains(buf.String(), "component=engine") || !strings.Contains(buf.String(), "scope.id=1") {
+		t.Errorf("attrs/group not propagated: %q", buf.String())
+	}
+
+	// The shared enabled switch must still gate derived handlers.
+	buf.Reset()
+	d.Disable()
+	derived.Error("suppressed")
+	if buf.Len() != 0 {
+		t.Errorf("derived handler ignored Disable: %q", buf.String())
+	}
+}
+
 func TestMuteLevelDisablesOutput(t *testing.T) {
 	var buf bytes.Buffer
 	d := newCapture("mute", &buf)
@@ -77,5 +98,13 @@ func TestMuteLevelDisablesOutput(t *testing.T) {
 	d.logger.Info("recovered")
 	if !strings.Contains(buf.String(), "recovered") {
 		t.Errorf("output not restored after leaving mute: %q", buf.String())
+	}
+
+	// SetLevel("mute") at runtime must also disable output.
+	buf.Reset()
+	d.SetLevel("mute")
+	d.logger.Error("muted-again")
+	if buf.Len() != 0 {
+		t.Errorf("SetLevel(\"mute\") did not disable output: %q", buf.String())
 	}
 }
