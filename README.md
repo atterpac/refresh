@@ -46,30 +46,29 @@ Using refresh as a library also opens the ability to add a [Callback](https://gi
 ### Structs
 ```go
 type Config struct {
-	RootPath        string   `toml:"root_path"`
-	BackgroundExec  string   `toml:"background_exec"` // Execute that stays running and is unaffected by any reloads npm run dev for example
-    BackgroundCheck bool     `toml:"background_check"`
-	Ignore          Ignore   `toml:"ignore"`
-	ExecList        []string `toml:"exec_list"` // See [Execute Lifecycle](https://github.com/atterpac/refresh#execute-lifecycle)
-	LogLevel        string   `toml:"log_level"`
-	Debounce        int      `toml:"debounce"`
-	Callback        func(*EventCallback) EventHandle
-	Slog            *slog.Logger
+	RootPath         string            `toml:"root_path"  yaml:"root_path"`
+	BackgroundStruct process.Execute   `toml:"background" yaml:"background"` // Execute that stays running and is unaffected by reloads (e.g. npm run dev)
+	Ignore           Ignore            `toml:"ignore"     yaml:"ignore"`
+	ExecStruct       []process.Execute `toml:"executes"   yaml:"executes"`   // Preferred: typed executes, see [Execute Lifecycle]
+	ExecList         []string          `toml:"exec_list"  yaml:"exec_list"`  // Simpler form, see [Execute Lifecycle]
+	LogLevel         string            `toml:"log_level"  yaml:"log_level"`
+	Debounce         int               `toml:"debounce"   yaml:"debounce"`
+	Callback         func(*EventCallback) EventHandle
+	Slog             *slog.Logger
 }
 
 type Ignore struct {
-	Dir        []string `toml:"dir"` // Specfic directory to ignore ie; node_modules
-	File       []string `toml:"file"` // Specific file to ignore 
-	WatchExten []string `toml:"extension"` // Extensions to watch NOT ignore, ie; `*.go, *.js` would ignore any file that is not go or javascript
-    GitIgnore  bool     `toml:"git_ignore"` // When true will check for a .gitignore in the root directory and add all entries to the ignore
+	Dir          []string `toml:"dir"               yaml:"dir"`               // Directories to ignore, e.g. node_modules
+	File         []string `toml:"file"              yaml:"file"`              // Files to ignore
+	WatchedExten []string `toml:"watched_extension" yaml:"watched_extension"` // Extensions to watch; anything else is ignored
+	IgnoreGit    bool     `toml:"git"               yaml:"git"`              // When true, .gitignore entries in the root are also ignored
 }
 
 type Execute struct {
-	Cmd          string      `toml:"cmd" yaml:"cmd"`                     // Execute command
-	ChangeDir    string      `toml:"dir" yaml:"dir"`                     // If directory needs to be changed to call this command relative to the root path
-	IsBlocking   bool        `toml:"blocking" yaml:"blocking"`           // Should the following executes wait for this one to complete
-	IsPrimary    bool        `toml:"primary" yaml:"primary"`             // Only one primary command can be run at a time
-	DelayNext    int         `toml:"delay_next" yaml:"delay_next"`       // Delay in milliseconds before running command
+	Cmd       string      `toml:"cmd"        yaml:"cmd"`        // Command to run
+	ChangeDir string      `toml:"dir"        yaml:"dir"`        // Directory to run in, relative to root_path
+	DelayNext int         `toml:"delay_next" yaml:"delay_next"` // Delay in milliseconds before running
+	Type      ExecuteType `toml:"type"       yaml:"type"`        // background | once | blocking | primary
 }
 ```
 
@@ -90,45 +89,36 @@ func main () {
 		Dir:          []string{".git","*/node_modules", "!api/*"}, // Ignore .git and any node_modules in the directory or anything not within the api directory
         IgnoreGit: true, // .gitignore sitting in the root directory? set this to true to automatially ignore those files
 	}
-    // Build execute structs
+    // Build execute structs. Type is one of: background | once | blocking | primary
 	tidy := engine.Execute{
-		Cmd:        "go mod tidy",
-		IsBlocking: true, // Next command should wait for this to finish
+		Cmd:  "go mod tidy",
+		Type: engine.Blocking, // Next command waits for this to finish
 	}
 	build := engine.Execute{
-		Cmd:        "go build -o ./bin/myapp",
-		IsBlocking: true, // Wait to kill (next step) until the new binary is built
+		Cmd:  "go build -o ./bin/myapp",
+		Type: engine.Blocking, // Block until the new binary is built before restarting
 	}
-    // Provided KILL_STALE will tell refresh when you would like to remove the stale process to prepare to launch the new one
-	kill := engine.KILL_STALE 
-    // Primary process usually runs your binary
+    // Primary process usually runs your binary; it is killed and restarted on each reload.
 	run := engine.Execute{
-        ChangeDir:   "./bin", // Change directory to call command in
-		Cmd:        "./myapp",
-		IsBlocking: false, // Should not block because it doesnt finish until Killed by refresh
-		IsPrimary:  true, // This is the main process refersh is rerunning so denoting it as primary
+        ChangeDir: "./bin",   // Directory to run the command in (relative to root_path)
+		Cmd:       "./myapp",
+		Type:      engine.Primary,
 	}
-    // Create config to pass into refresh.NewEngineFromConfig()
+    // Create config to pass into engine.NewEngineFromConfig()
 	config := engine.Config{
-		RootPath: "./test",
-		// Below is ran when a reload is triggered before killing the stale version
+		RootPath:   "./test",
 		Ignore:     ignore,
-		Debounce:   1000, // Time in ms to ignore repitive reload triggers usually caused by an OS creating multiple write/rename events for a singular change
-		LogLevel:   "debug", // debug | info | warn | error | mute -> surpresses all logs to the stdOut
-        Callback:   RefreshCallback, // func(*engine.Callback) refresh.EventHandle {}
-		ExecStruct: []refresh.Execute{tidy, build, kill, run},
-        // Alternatively for easier config but less control over executes
-        // ExecList: []string{"go mod tidy", "go build -o ./myapp", refresh.KILL_EXEC, refresh.REFRESH_EXEC, "./myapp"}
-        // All calls will be blocking with the exception of the call after REFRESH
-        // Both KILL_EXEC and REFRESH_EXEC are **REQUIRED** for refresh to function properly
-        // engine.KILL_EXEC denotes when the stale process should be killed
-        // engine.REFRESH_EXEC denotes the next execute is "primary"
-		Slog:       nil, // Optionally provide a slog interface
-                         // if nil a default will be provided
-                         // If provided stdout will not be piped through refresh
+		Debounce:   1000, // Time in ms to coalesce repetitive reload triggers (the last save in a burst wins)
+		LogLevel:   "debug", // debug | info | warn | error | mute
+        Callback:   RefreshCallback, // func(*engine.EventCallback) engine.EventHandle
+		ExecStruct: []engine.Execute{tidy, build, run},
+        // Alternatively, the simpler ExecList form. REFRESH_EXEC marks the command
+        // after it as the primary process; everything else runs blocking in order.
+        // ExecList: []string{"go mod tidy", "go build -o ./myapp", engine.REFRESH_EXEC, "./myapp"}
+		Slog:       nil, // Optionally provide your own *slog.Logger; a default is used if nil
 	}
 
-	engine, err := refresh.NewEngineFromConfig(config)
+	engine, err := engine.NewEngineFromConfig(config)
     if err != nil {
         //Handle err
     }
@@ -248,12 +238,28 @@ func ExampleCallback(e refresh.EventCallback) refresh.EventHandle {
 	return engine.EventContinue
 }
 ```
+### Logging
+
+Refresh ships with a built-in structured logger. The level is set via the
+`log_level` config field (`debug | info | warn | error | mute`) and can also be
+controlled at runtime — these are safe to call from any goroutine:
+
+```go
+engine.SetLogLevel("debug") // change verbosity live ("mute" suppresses output)
+engine.DisableLogs()        // mute without losing the configured level
+engine.EnableLogs()         // resume at the previous level
+engine.SetLogger(myLogger)  // supply your own *slog.Logger (still controllable)
+```
+
+`DisableLogs`/`EnableLogs` toggle a single switch shared by the whole logger, so
+re-enabling restores the previously configured level. Subprocess stdout/stderr
+is written straight to the terminal and is not affected by these controls.
+
 ### Config File
 
 If you would prefer to load from a [config](https://github.com/Atterpac/refresh#config-file) file rather than building the structs you can use 
 ```go
 engine.NewEngineFromTOML("path/to/toml")
-engine.SetLogger(//Input slog.Logger)
 ```
 #### Example Config
 ```toml
@@ -262,11 +268,10 @@ engine.SetLogger(//Input slog.Logger)
 root_path = "./"
 # debug | info(default) | warn | error | mute
 log_level = "info" 
-# Debounce setting for ignoring reptitive file system notifications
+# Debounce setting for coalescing repetitive file system notifications
 debounce = 1000 # Milliseconds
-# Sets what files the watcher should ignore
-background_check = true
 
+# Sets what files the watcher should ignore
 [config.ignore]
 # Ignore follows normal pattern matching including /**/
 # Directories to ignore

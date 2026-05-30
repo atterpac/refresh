@@ -58,37 +58,37 @@ func main() {
 			slog.Error("Error reading config file", "err", err)
 		}
 	} else {
-			ignore := refresh.Ignore{
-				File:         strings.Split(ignoreFile, ","),
-				Dir:          strings.Split(ignoreDir, ","),
-				WatchedExten: strings.Split(ignoreExt, ","),
-				IgnoreGit:    gitIgnore,
-			}
-			// Debounce string to int
-			debounceThreshold, err := strconv.Atoi(debounce)
-			if err != nil {
-				fmt.Println("Error converting debounce to int")
-				os.Exit(1)
-			}
-			config := refresh.Config{
-				RootPath: rootPath,
-				ExecList: strings.Split(execCommand, ","),
-				LogLevel: logLevel,
-				Ignore:   ignore,
-				Debounce: debounceThreshold,
-			}
-			watch, err = refresh.NewEngineFromConfig(config)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
+		ignore := refresh.Ignore{
+			File:         strings.Split(ignoreFile, ","),
+			Dir:          strings.Split(ignoreDir, ","),
+			WatchedExten: strings.Split(ignoreExt, ","),
+			IgnoreGit:    gitIgnore,
 		}
-
-		err := watch.Start()
+		// Debounce string to int
+		debounceThreshold, err := strconv.Atoi(debounce)
 		if err != nil {
+			fmt.Println("Error converting debounce to int")
 			os.Exit(1)
 		}
-		<-make(chan struct{})
+		config := refresh.Config{
+			RootPath: rootPath,
+			ExecList: strings.Split(execCommand, ","),
+			LogLevel: logLevel,
+			Ignore:   ignore,
+			Debounce: debounceThreshold,
+		}
+		watch, err = refresh.NewEngineFromConfig(config)
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+	}
+
+	err := watch.Start()
+	if err != nil {
+		os.Exit(1)
+	}
+	<-make(chan struct{})
 }
 
 func PrintBanner(ver string) string {

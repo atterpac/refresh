@@ -130,6 +130,7 @@ func (engine *Engine) verifyConfig() error {
 	if engine.Config.RootPath == "" {
 		return errors.New("root path is required")
 	}
+	engine.normalizeExecutes()
 	if err := engine.verifyExecute(); err != nil {
 		return err
 	}
@@ -137,21 +138,71 @@ func (engine *Engine) verifyConfig() error {
 	return nil
 }
 
-// Verify execute structs
-func (engine *Engine) verifyExecute() error {
-	var primary bool
-	if len(engine.Config.ExecList) == 2 && len(engine.Config.ExecStruct) < 2 {
-		return errors.New("Execute list or struct's must be provided in the refresh config")
+// normalizeExecutes converts the simpler ExecList (string) form into the
+// canonical ExecStruct form when no struct executes were supplied, so the rest
+// of the engine only ever deals with one representation.
+func (engine *Engine) normalizeExecutes() {
+	if len(engine.Config.ExecStruct) == 0 && len(engine.Config.ExecList) > 0 {
+		engine.Config.ExecStruct = execListToSpecs(engine.Config.ExecList)
 	}
-	if engine.Config.ExecList == nil {
-		for _, exe := range engine.Config.ExecStruct {
-			if exe.Type == "primary" {
-				if primary {
-					return errors.New("Only one primary execute can be set")
-				}
-				primary = true
-			}
+}
+
+// execListToSpecs maps an ExecList into Execute structs. Commands are blocking
+// by default; REFRESH_EXEC marks the following command as the primary process,
+// and KILL_EXEC is accepted but ignored (the supervisor handles stale kills).
+// If no REFRESH_EXEC marker is present, the last command becomes the primary so
+// a bare list still runs something long-lived.
+func execListToSpecs(list []string) []process.Execute {
+	specs := make([]process.Execute, 0, len(list))
+	primaryNext := false
+	for _, raw := range list {
+		cmd := strings.TrimSpace(raw)
+		switch cmd {
+		case "":
+			continue
+		case process.KILL_EXEC:
+			continue
+		case process.REFRESH_EXEC:
+			primaryNext = true
+			continue
 		}
+		execType := process.Blocking
+		if primaryNext {
+			execType = process.Primary
+			primaryNext = false
+		}
+		specs = append(specs, process.Execute{Cmd: cmd, Type: execType})
+	}
+
+	if len(specs) > 0 && !hasPrimary(specs) {
+		specs[len(specs)-1].Type = process.Primary
+	}
+	return specs
+}
+
+func hasPrimary(specs []process.Execute) bool {
+	for _, s := range specs {
+		if s.Type == process.Primary {
+			return true
+		}
+	}
+	return false
+}
+
+// verifyExecute ensures at least one execute is configured and that no more than
+// one primary process is declared.
+func (engine *Engine) verifyExecute() error {
+	if len(engine.Config.ExecStruct) == 0 {
+		return errors.New("at least one execute must be provided via ExecStruct or ExecList")
+	}
+	primary := 0
+	for _, exe := range engine.Config.ExecStruct {
+		if exe.Type == process.Primary {
+			primary++
+		}
+	}
+	if primary > 1 {
+		return errors.New("only one primary execute can be set")
 	}
 	return nil
 }
