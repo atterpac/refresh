@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
-	"strings"
 )
 
 type Execute struct {
@@ -36,24 +35,19 @@ var KILL_STALE = Execute{
 var REFRESH_EXEC = "REFRESH"
 var KILL_EXEC = "KILL_STALE"
 
-// generateExec splits a command string on whitespace into a runnable command.
-// strings.Fields collapses repeated spaces so "go  build" is handled correctly.
+// generateExec builds a command run through the platform shell, so command
+// strings may use quoting, pipes, &&, and redirection rather than being a bare
+// argv split on spaces.
 func generateExec(cmd string) *exec.Cmd {
-	fields := strings.Fields(cmd)
-	if len(fields) == 0 {
-		return exec.Command("")
-	}
-	return exec.Command(fields[0], fields[1:]...)
+	shell, args := shellInvocation(cmd)
+	return exec.Command(shell, args...)
 }
 
 // generateExecContext is generateExec bound to a context, so the command is
 // killed if the context is cancelled (used for blocking/once steps).
 func generateExecContext(ctx context.Context, cmd string) *exec.Cmd {
-	fields := strings.Fields(cmd)
-	if len(fields) == 0 {
-		return exec.CommandContext(ctx, "")
-	}
-	return exec.CommandContext(ctx, fields[0], fields[1:]...)
+	shell, args := shellInvocation(cmd)
+	return exec.CommandContext(ctx, shell, args...)
 }
 
 func stringToExecuteType(typing string) (ExecuteType, error) {

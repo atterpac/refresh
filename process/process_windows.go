@@ -7,6 +7,12 @@ import (
 	"strconv"
 )
 
+// shellInvocation returns the shell and arguments used to run a command string,
+// so commands may use shell features. Windows uses cmd.exe.
+func shellInvocation(command string) (string, []string) {
+	return "cmd", []string{"/C", command}
+}
+
 // setProcessGroup is a no-op on Windows; process-tree termination is handled by
 // taskkill /T in killProcessTree.
 func setProcessGroup(cmd *exec.Cmd) {}

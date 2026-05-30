@@ -7,6 +7,12 @@ import (
 	"syscall"
 )
 
+// shellInvocation returns the shell and arguments used to run a command string,
+// so commands may use shell features (quoting, pipes, &&, redirection).
+func shellInvocation(command string) (string, []string) {
+	return "/bin/sh", []string{"-c", command}
+}
+
 // setProcessGroup puts the command in its own process group so the entire tree
 // (the child and anything it spawns) can be signalled together.
 func setProcessGroup(cmd *exec.Cmd) {
