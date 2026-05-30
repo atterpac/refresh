@@ -141,6 +141,11 @@ func (engine *Engine) verifyConfig() error {
 	if engine.Config.RootPath == "" {
 		return errors.New("root path is required")
 	}
+	// The background block always runs as a background process; a type set on it
+	// is dropped, so warn rather than silently ignore it.
+	if t := engine.Config.BackgroundStruct.Type; t != "" && t != process.Background {
+		slog.Warn("background.type is ignored; the background command always runs as a background process", "ignored_type", t)
+	}
 	engine.normalizeExecutes()
 	if err := engine.verifyExecute(); err != nil {
 		return err
