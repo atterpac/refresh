@@ -3,10 +3,9 @@ package engine
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
-	"runtime"
+	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -15,18 +14,15 @@ import (
 )
 
 type Config struct {
-	RootPath           string            `toml:"root_path"  yaml:"root_path"`
-	BackgroundStruct   process.Execute   `toml:"background" yaml:"background"`
-	BackgroundCallback func() bool       `toml:"-"          yaml:"-"`
-	Ignore             Ignore            `toml:"ignore"     yaml:"ignore"`
-	ExecStruct         []process.Execute `toml:"executes"   yaml:"executes"`
-	ExecList           []string          `toml:"exec_list"  yaml:"exec_list"`
-	LogLevel           string            `toml:"log_level"  yaml:"log_level"`
-	Debounce           int               `toml:"debounce"   yaml:"debounce"`
-	Callback           func(*EventCallback) EventHandle
-	Slog               *slog.Logger
-	ignoreMap          ignoreMap
-	externalSlog       bool
+	RootPath         string            `toml:"root_path"  yaml:"root_path"`
+	BackgroundStruct process.Execute   `toml:"background" yaml:"background"`
+	Ignore           Ignore            `toml:"ignore"     yaml:"ignore"`
+	ExecStruct       []process.Execute `toml:"executes"   yaml:"executes"`
+	ExecList         []string          `toml:"exec_list"  yaml:"exec_list"`
+	LogLevel         string            `toml:"log_level"  yaml:"log_level"`
+	Debounce         int               `toml:"debounce"   yaml:"debounce"`
+	Callback         func(*EventCallback) EventHandle
+	Slog             *slog.Logger
 }
 
 func DefaultEngineConfig() Config {
@@ -90,7 +86,7 @@ func (c *Config) WithExecuteCommand(cmd process.Execute) *Config {
 // Reads a config.toml file and returns the engine
 func (engine *Engine) readConfigFile(path string) (*Engine, error) {
 	if _, err := toml.DecodeFile(path, &engine); err != nil {
-		slog.Error("Error reading config file", err)
+		slog.Error("reading config file", "path", path, "err", err)
 		return nil, err
 	}
 	return engine, nil
@@ -99,13 +95,12 @@ func (engine *Engine) readConfigFile(path string) (*Engine, error) {
 func (engine *Engine) readConfigYaml(path string) (*Engine, error) {
 	file, err := os.ReadFile(path)
 	if err != nil {
-		slog.Error("Error reading config file", err)
+		slog.Error("reading config file", "path", path, "err", err)
 		return nil, err
 	}
 	err = yaml.Unmarshal(file, &engine)
 	if err != nil {
-		slog.Error("Error reading config file", err)
-		slog.Error(err.Error())
+		slog.Error("parsing yaml config", "path", path, "err", err)
 		return nil, err
 	}
 	return engine, nil
@@ -114,18 +109,15 @@ func (engine *Engine) readConfigYaml(path string) (*Engine, error) {
 func (engine *Engine) StringtoConfigYAML(yamlString string) error {
 	err := yaml.Unmarshal([]byte(yamlString), &engine)
 	if err != nil {
-		slog.Error("Error reading config file", err)
-		slog.Error(err.Error())
+		slog.Error("parsing yaml config string", "err", err)
 		return err
 	}
 	return nil
 }
 
 func (engine *Engine) StringtoConfigTOML(tomlString string) error {
-	err := yaml.Unmarshal([]byte(tomlString), &engine)
-	if err != nil {
-		slog.Error("Error reading config file", err)
-		slog.Error(err.Error())
+	if _, err := toml.Decode(tomlString, &engine); err != nil {
+		slog.Error("parsing toml config string", "err", err)
 		return err
 	}
 	return nil
@@ -133,96 +125,124 @@ func (engine *Engine) StringtoConfigTOML(tomlString string) error {
 
 // Verify required data is present in config
 func (engine *Engine) verifyConfig() error {
-	slog.Debug("Verifying Config")
+	slog.Debug("verifying config")
 	if engine.Config.RootPath == "" {
-		slog.Error("Required Root Path is not set")
-		return errors.New("Required Root Path is not set")
+		return errors.New("root path is required")
 	}
-	err := engine.verifyExecute()
-	if err != nil {
+	engine.normalizeExecutes()
+	if err := engine.verifyExecute(); err != nil {
 		return err
 	}
-	slog.Debug("Config Verified")
-	// Change directory executes are called in to match root directory
-	cleaned := cleanDirectory(engine.Config.RootPath)
-	slog.Info("Changing Working Directory", "dir", cleaned)
-	changeWorkingDirectory(cleaned)
+	slog.Debug("config verified")
 	return nil
 }
 
-// Verify execute structs
-func (engine *Engine) verifyExecute() error {
-	var primary bool
-	if len(engine.Config.ExecList) == 2 && len(engine.Config.ExecStruct) < 2 {
-		return errors.New("Execute list or struct's must be provided in the refresh config")
+// normalizeExecutes converts the simpler ExecList (string) form into the
+// canonical ExecStruct form when no struct executes were supplied, so the rest
+// of the engine only ever deals with one representation.
+func (engine *Engine) normalizeExecutes() {
+	if len(engine.Config.ExecStruct) == 0 && len(engine.Config.ExecList) > 0 {
+		engine.Config.ExecStruct = execListToSpecs(engine.Config.ExecList)
 	}
-	if engine.Config.ExecList == nil {
-		for _, exe := range engine.Config.ExecStruct {
-			if exe.Type == "primary" {
-				if primary {
-					return errors.New("Only one primary execute can be set")
-				}
-				primary = true
-			}
+}
+
+// execListToSpecs maps an ExecList into Execute structs. Commands are blocking
+// by default; REFRESH_EXEC marks the following command as the primary process,
+// and KILL_EXEC is accepted but ignored (the supervisor handles stale kills).
+// If no REFRESH_EXEC marker is present, the last command becomes the primary so
+// a bare list still runs something long-lived.
+func execListToSpecs(list []string) []process.Execute {
+	specs := make([]process.Execute, 0, len(list))
+	primaryNext := false
+	for _, raw := range list {
+		cmd := strings.TrimSpace(raw)
+		switch cmd {
+		case "":
+			continue
+		case process.KILL_EXEC:
+			continue
+		case process.REFRESH_EXEC:
+			primaryNext = true
+			continue
+		}
+		execType := process.Blocking
+		if primaryNext {
+			execType = process.Primary
+			primaryNext = false
+		}
+		specs = append(specs, process.Execute{Cmd: cmd, Type: execType})
+	}
+
+	if len(specs) > 0 && !hasPrimary(specs) {
+		specs[len(specs)-1].Type = process.Primary
+	}
+	return specs
+}
+
+func hasPrimary(specs []process.Execute) bool {
+	for _, s := range specs {
+		if s.Type == process.Primary {
+			return true
 		}
 	}
+	return false
+}
+
+// verifyExecute ensures at least one execute is configured and that no more than
+// one primary process is declared.
+func (engine *Engine) verifyExecute() error {
+	if len(engine.Config.ExecStruct) == 0 {
+		return errors.New("at least one execute must be provided via ExecStruct or ExecList")
+	}
+	primary := 0
+	for _, exe := range engine.Config.ExecStruct {
+		if exe.Type == process.Primary {
+			primary++
+		}
+	}
+	if primary > 1 {
+		return errors.New("only one primary execute can be set")
+	}
 	return nil
 }
 
-func readGitIgnore(path string) map[string]struct{} {
-	file, err := os.Open(path + "/.gitignore")
+// readGitIgnore reads the root .gitignore and returns its entries as globs that
+// patternMatch can apply. Returns nil if there is no .gitignore.
+func readGitIgnore(path string) []string {
+	file, err := os.Open(filepath.Join(path, ".gitignore"))
 	if err != nil {
 		return nil
 	}
 	defer file.Close()
-	slog.Debug("Reading .gitignore")
+	slog.Debug("reading .gitignore")
 	scanner := bufio.NewScanner(file)
-	var linesMap = make(map[string]struct{})
+	var patterns []string
 	for scanner.Scan() {
-		// Check if line is a comment
-		if strings.HasPrefix(scanner.Text(), "#") {
+		line := strings.TrimSpace(scanner.Text())
+		// Skip comments and blank lines.
+		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		// Check if line is empty
-		if len(scanner.Text()) == 0 {
-			continue
-		}
-
-		line := scanner.Text()
-		// Check if line does not start with '*'
+		// Normalize to a glob so patternMatch can use it.
 		if !strings.HasPrefix(line, "*") {
-			// Add asterisk to the beginning of line
 			line = "*" + line
 		}
-		// Add to the map
-		linesMap[line] = struct{}{}
+		patterns = append(patterns, line)
 	}
-	slog.Debug(fmt.Sprintf("Read %v lines from .gitignore", linesMap))
-	return linesMap
-}
-
-func cleanDirectory(path string) string {
-	cleaned := strings.TrimPrefix(path, ".")
-	cleaned = strings.TrimPrefix(cleaned, "/")
-	if runtime.GOOS == "windows" {
-		cleaned = strings.TrimPrefix(cleaned, `\`) // Windows >:(
+	if err := scanner.Err(); err != nil {
+		slog.Debug("reading .gitignore", "err", err)
 	}
-	wd, err := os.Getwd()
-	if err != nil {
-		slog.Error("Getting Working Directory")
-	}
-	return wd + "/" + cleaned
-}
-
-func changeWorkingDirectory(path string) {
-	err := os.Chdir(path)
-	if err != nil {
-		slog.Error("Setting new directory", "dir", path)
-	}
+	slog.Debug("read .gitignore", "patterns", len(patterns))
+	return patterns
 }
 
 func (e *Engine) generateProcess() {
+	// A configured background command is started once at startup, survives
+	// reloads, and is killed on shutdown — regardless of any Type set on it.
+	if bg := e.Config.BackgroundStruct; bg.Cmd != "" {
+		_ = e.ProcessManager.AddProcess(bg.Cmd, string(process.Background), bg.ChangeDir)
+	}
 	for _, ex := range e.Config.ExecStruct {
-		e.ProcessManager.AddProcess(ex.Cmd, string(ex.Type), ex.ChangeDir)
+		_ = e.ProcessManager.AddProcess(ex.Cmd, string(ex.Type), ex.ChangeDir)
 	}
 }

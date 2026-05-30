@@ -5,97 +5,121 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strconv"
 	"strings"
 
 	refresh "github.com/atterpac/refresh/engine"
 )
 
-func main() {
-	var version string = "0.4.9"
+const version = "0.4.9"
 
-	var rootPath string
-	var execCommand string
-	var logLevel string
-	var configPath string
-	var debounce string
+// cliFlags holds the parsed command-line configuration.
+type cliFlags struct {
+	rootPath    string
+	execCommand string
+	logLevel    string
+	configPath  string
+	debounce    int
+	version     bool
+	gitIgnore   bool
+	ignoreDir   string
+	ignoreFile  string
+	ignoreExt   string
+}
 
-	var versFlag bool
-	var gitIgnore bool
-
-	// Ignore
-	var ignoreDir string
-	var ignoreFile string
-	var ignoreExt string
-
-	flag.StringVar(&rootPath, "p", "./", "Root path to watch")
-	flag.StringVar(&execCommand, "e", "", "Command to execute on changes")
-	flag.StringVar(&logLevel, "l", "info", "Level to set Logs")
-	flag.StringVar(&configPath, "f", "", "File to read config from")
-	flag.StringVar(&ignoreDir, "id", "", "Ignore Directory list as comma-separated list")
-	flag.StringVar(&ignoreFile, "if", "", "Ignore File list as comma-separated list")
-	flag.StringVar(&ignoreExt, "ie", "", "Watched Extension list as comma-separated list")
-	flag.StringVar(&debounce, "d", "1000", "Debounce time in milliseconds")
-	flag.BoolVar(&versFlag, "v", false, "Print version")
-	flag.BoolVar(&gitIgnore, "git", false, "Read from .gitignore")
-	flag.Parse()
-
-	if versFlag {
-		fmt.Println(PrintBanner(version))
-		os.Exit(0)
+// parseFlags parses args (without the program name) into a cliFlags.
+func parseFlags(args []string) (cliFlags, error) {
+	var f cliFlags
+	fs := flag.NewFlagSet("refresh", flag.ContinueOnError)
+	fs.StringVar(&f.rootPath, "p", "./", "Root path to watch")
+	fs.StringVar(&f.execCommand, "e", "", "Comma-separated commands to execute on changes")
+	fs.StringVar(&f.logLevel, "l", "info", "Log level: debug|info|warn|error|mute")
+	fs.StringVar(&f.configPath, "f", "", "Config file to read (.toml or .yaml)")
+	fs.StringVar(&f.ignoreDir, "id", "", "Ignore directories (comma-separated)")
+	fs.StringVar(&f.ignoreFile, "if", "", "Ignore files (comma-separated)")
+	fs.StringVar(&f.ignoreExt, "ie", "", "Watched extensions (comma-separated)")
+	fs.IntVar(&f.debounce, "d", 1000, "Debounce time in milliseconds")
+	fs.BoolVar(&f.version, "v", false, "Print version")
+	fs.BoolVar(&f.gitIgnore, "git", false, "Read .gitignore in the root")
+	if err := fs.Parse(args); err != nil {
+		return f, err
 	}
-	var watch *refresh.Engine
+	return f, nil
+}
 
-	if len(configPath) != 0 {
-		// If toml vs yaml
-		var err error
-		if strings.Contains(configPath, ".toml") {
-			watch, err = refresh.NewEngineFromTOML(configPath)
-		} else if strings.Contains(configPath, ".yaml") {
-			watch, err = refresh.NewEngineFromYAML(configPath)
+// splitList splits a comma-separated flag value, trimming whitespace and
+// dropping empty entries (so an unset flag yields nil, not [""]).
+func splitList(csv string) []string {
+	if strings.TrimSpace(csv) == "" {
+		return nil
+	}
+	var out []string
+	for p := range strings.SplitSeq(csv, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
 		}
-		if err != nil {
-			slog.Error("Error reading config file", "err", err)
-		}
-	} else {
-			ignore := refresh.Ignore{
-				File:         strings.Split(ignoreFile, ","),
-				Dir:          strings.Split(ignoreDir, ","),
-				WatchedExten: strings.Split(ignoreExt, ","),
-				IgnoreGit:    gitIgnore,
-			}
-			// Debounce string to int
-			debounceThreshold, err := strconv.Atoi(debounce)
-			if err != nil {
-				fmt.Println("Error converting debounce to int")
-				os.Exit(1)
-			}
-			config := refresh.Config{
-				RootPath: rootPath,
-				ExecList: strings.Split(execCommand, ","),
-				LogLevel: logLevel,
-				Ignore:   ignore,
-				Debounce: debounceThreshold,
-			}
-			watch, err = refresh.NewEngineFromConfig(config)
-			if err != nil {
-				fmt.Println(err)
-				os.Exit(1)
-			}
-		}
+	}
+	return out
+}
 
-		err := watch.Start()
-		if err != nil {
-			os.Exit(1)
+// toConfig maps the flags to an engine.Config (used when no config file is given).
+func (f cliFlags) toConfig() refresh.Config {
+	return refresh.Config{
+		RootPath: f.rootPath,
+		ExecList: splitList(f.execCommand),
+		LogLevel: f.logLevel,
+		Debounce: f.debounce,
+		Ignore: refresh.Ignore{
+			File:         splitList(f.ignoreFile),
+			Dir:          splitList(f.ignoreDir),
+			WatchedExten: splitList(f.ignoreExt),
+			IgnoreGit:    f.gitIgnore,
+		},
+	}
+}
+
+// newEngine builds an engine from a config file when -f is given, otherwise from
+// the individual flags.
+func newEngine(f cliFlags) (*refresh.Engine, error) {
+	if f.configPath != "" {
+		switch {
+		case strings.HasSuffix(f.configPath, ".toml"):
+			return refresh.NewEngineFromTOML(f.configPath)
+		case strings.HasSuffix(f.configPath, ".yaml"), strings.HasSuffix(f.configPath, ".yml"):
+			return refresh.NewEngineFromYAML(f.configPath)
+		default:
+			return nil, fmt.Errorf("unsupported config file %q (want .toml or .yaml)", f.configPath)
 		}
-		<-make(chan struct{})
+	}
+	return refresh.NewEngineFromConfig(f.toConfig())
+}
+
+func main() {
+	f, err := parseFlags(os.Args[1:])
+	if err != nil {
+		os.Exit(2)
+	}
+	if f.version {
+		fmt.Println(PrintBanner(version))
+		return
+	}
+
+	watch, err := newEngine(f)
+	if err != nil {
+		slog.Error("failed to configure refresh", "err", err)
+		os.Exit(1)
+	}
+	// Start blocks until a signal triggers shutdown.
+	if err := watch.Start(); err != nil {
+		slog.Error("refresh exited with error", "err", err)
+		os.Exit(1)
+	}
 }
 
 func PrintBanner(ver string) string {
 	return fmt.Sprintf(`
    ___  ___________  __________ __
   / _ \/ __/ __/ _ \/ __/ __/ // /
- / , _/ _// _// , _/ _/_\ \/ _  / 
-/_/|_/___/_/ /_/|_/___/___/_//_/ CLI v%s  
+ / , _/ _// _// , _/ _/_\ \/ _  /
+/_/|_/___/_/ /_/|_/___/___/_//_/ CLI v%s
 `, ver)
 }
