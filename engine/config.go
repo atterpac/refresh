@@ -26,7 +26,6 @@ type Config struct {
 	Callback           func(*EventCallback) EventHandle
 	Slog               *slog.Logger
 	ignoreMap          ignoreMap
-	externalSlog       bool
 }
 
 func DefaultEngineConfig() Config {

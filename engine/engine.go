@@ -28,6 +28,42 @@ type Engine struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	isPaused       bool
+	log            *dynamicLogger
+}
+
+// initLogger builds the engine's logger from the configured level (and an
+// optional caller-supplied logger) and installs it as the slog default so that
+// every package — including process — routes through the same controllable
+// handler. Called by all constructors.
+func (engine *Engine) initLogger() {
+	engine.log = newDynamicLogger(engine.Config.LogLevel, engine.Config.Slog)
+	engine.Config.Slog = engine.log.logger
+	slog.SetDefault(engine.log.logger)
+}
+
+// SetLogLevel changes the active log level at runtime. Accepts
+// "debug", "info", "warn", "error", or "mute". Safe to call from any goroutine.
+func (engine *Engine) SetLogLevel(level string) {
+	if engine.log == nil {
+		engine.Config.LogLevel = level
+		return
+	}
+	engine.log.SetLevel(level)
+}
+
+// DisableLogs mutes all engine output without discarding the configured level,
+// so EnableLogs restores the previous verbosity.
+func (engine *Engine) DisableLogs() {
+	if engine.log != nil {
+		engine.log.Disable()
+	}
+}
+
+// EnableLogs resumes output after DisableLogs.
+func (engine *Engine) EnableLogs() {
+	if engine.log != nil {
+		engine.log.Enable()
+	}
 }
 
 func (engine *Engine) Start() error {
@@ -73,34 +109,30 @@ func (engine *Engine) Stop() {
 	notify.Stop(engine.Chan)
 }
 
+// SetLogger replaces the engine's logger with a caller-supplied one. The logger
+// is still wrapped so SetLogLevel/DisableLogs/EnableLogs continue to work.
 func (engine *Engine) SetLogger(logger *slog.Logger) {
-	engine.Config.Slog = logger
-	engine.Config.externalSlog = true
+	engine.log = newDynamicLogger(engine.Config.LogLevel, logger)
+	engine.Config.Slog = engine.log.logger
+	slog.SetDefault(engine.log.logger)
 }
 
-// This is out of date
+// Deprecated: NewEngine predates the Config-based constructors and does not wire
+// up the full lifecycle. Use NewEngineFromConfig instead.
 func NewEngine(rootPath, execCommand, logLevel string, execList []string, ignore Ignore, debounce int, chunkSize string) (*Engine, error) {
-	engine := &Engine{}
-	engine.Config = Config{
+	return NewEngineFromConfig(Config{
 		RootPath: rootPath,
 		ExecList: execList,
 		LogLevel: logLevel,
 		Ignore:   ignore,
 		Debounce: debounce,
-	}
-	err := engine.verifyConfig()
-	if err != nil {
-		return nil, err
-	}
-	engine.ProcessManager = process.NewProcessManager()
-	engine.generateProcess()
-	_ = engine.ProcessManager.SetRootDirectory(engine.Config.RootPath)
-	return engine, nil
+	})
 }
 
 func NewEngineFromConfig(options Config) (*Engine, error) {
 	engine := &Engine{}
 	engine.Config = options
+	engine.initLogger()
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	err := engine.verifyConfig()
 	if err != nil {
@@ -113,46 +145,35 @@ func NewEngineFromConfig(options Config) (*Engine, error) {
 }
 
 func NewEngineFromTOML(confPath string) (*Engine, error) {
-	engine := Engine{}
-	_, err := engine.readConfigFile(confPath)
-	if err != nil {
+	engine := &Engine{}
+	if _, err := engine.readConfigFile(confPath); err != nil {
 		return nil, err
 	}
-	config := engine.Config
-	config.Slog = newLogger(config.LogLevel)
-	config.externalSlog = false
-	slog.SetDefault(config.Slog)
+	engine.initLogger()
 	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
-	engine.Config.externalSlog = false
-	err = engine.verifyConfig()
-	if err != nil {
-		return nil, err
-	}
-	engine.ProcessManager = process.NewProcessManager()
-	engine.generateProcess()
-	return &engine, nil
-}
-
-func NewEngineFromYAML(confPath string) (*Engine, error) {
-	engine := Engine{}
-	_, err := engine.readConfigYaml(confPath)
-	if err != nil {
-		return nil, err
-	}
-	config := engine.Config
-	config.Slog = newLogger(config.LogLevel)
-	config.externalSlog = false
-	slog.SetDefault(config.Slog)
-	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
-	engine.Config.externalSlog = false
-	err = engine.verifyConfig()
-	if err != nil {
+	if err := engine.verifyConfig(); err != nil {
 		return nil, err
 	}
 	engine.ProcessManager = process.NewProcessManager()
 	engine.generateProcess()
 	_ = engine.ProcessManager.SetRootDirectory(engine.Config.RootPath)
-	return &engine, nil
+	return engine, nil
+}
+
+func NewEngineFromYAML(confPath string) (*Engine, error) {
+	engine := &Engine{}
+	if _, err := engine.readConfigYaml(confPath); err != nil {
+		return nil, err
+	}
+	engine.initLogger()
+	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
+	if err := engine.verifyConfig(); err != nil {
+		return nil, err
+	}
+	engine.ProcessManager = process.NewProcessManager()
+	engine.generateProcess()
+	_ = engine.ProcessManager.SetRootDirectory(engine.Config.RootPath)
+	return engine, nil
 }
 
 func (engine *Engine) AttachBackgroundCallback(callback func() bool) *Engine {
