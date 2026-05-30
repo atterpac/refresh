@@ -79,6 +79,21 @@ func TestVerifyExecuteRequiresAtLeastOne(t *testing.T) {
 	}
 }
 
+func TestBackgroundStructBecomesProcess(t *testing.T) {
+	eng, err := NewEngineFromConfig(Config{
+		RootPath:         ".",
+		BackgroundStruct: process.Execute{Cmd: "echo bg"},
+		ExecStruct:       []process.Execute{{Cmd: "./app", Type: process.Primary}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The background command is registered ahead of the configured executes.
+	if got := eng.ProcessManager.GetExecutes(); len(got) != 2 || got[0] != "echo bg" || got[1] != "./app" {
+		t.Errorf("executes = %v, want [echo bg, ./app]", got)
+	}
+}
+
 func TestNormalizeExecutesPrefersStruct(t *testing.T) {
 	e := &Engine{Config: Config{
 		RootPath:   ".",

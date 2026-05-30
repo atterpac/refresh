@@ -103,7 +103,7 @@ func TestKitchenSinkIntegration(t *testing.T) {
 	if !waitFor(func() bool { return lines(art("primary.log")) == 1 }) {
 		t.Fatalf("primary did not start (primary.log = %d lines)", lines(art("primary.log")))
 	}
-	for _, f := range []string{"once.log", "background.log", "blocking.log"} {
+	for _, f := range []string{"once.log", "background.log", "bgstruct.log", "blocking.log"} {
 		if !waitFor(func() bool { return lines(art(f)) >= 1 }) {
 			t.Fatalf("%s was not written on startup", f)
 		}
@@ -160,6 +160,9 @@ func TestKitchenSinkIntegration(t *testing.T) {
 	}
 	if got := lines(art("background.log")); got != 1 {
 		t.Errorf("background execute restarted (%d lines), want 1 (it should survive reloads)", got)
+	}
+	if got := lines(art("bgstruct.log")); got != 1 {
+		t.Errorf("BackgroundStruct restarted (%d lines), want 1 (it should run once and survive reloads)", got)
 	}
 }
 

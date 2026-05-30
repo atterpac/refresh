@@ -30,6 +30,11 @@ func buildConfig(root string) engine.Config {
 		RootPath: root,
 		LogLevel: "info",
 		Debounce: 300,
+		// A standalone background service: started once, survives reloads, and is
+		// killed only on shutdown (e.g. `npm run dev`).
+		BackgroundStruct: engine.Execute{
+			Cmd: "mkdir -p artifacts && echo up >> artifacts/bgstruct.log && sleep 3600",
+		},
 		Ignore: engine.Ignore{
 			WatchedExten: []string{"*.go"},              // only react to Go changes
 			Dir:          []string{".git", "artifacts"}, // never react to our own output

@@ -237,7 +237,12 @@ func readGitIgnore(path string) []string {
 }
 
 func (e *Engine) generateProcess() {
+	// A configured background command is started once at startup, survives
+	// reloads, and is killed on shutdown — regardless of any Type set on it.
+	if bg := e.Config.BackgroundStruct; bg.Cmd != "" {
+		_ = e.ProcessManager.AddProcess(bg.Cmd, string(process.Background), bg.ChangeDir)
+	}
 	for _, ex := range e.Config.ExecStruct {
-		e.ProcessManager.AddProcess(ex.Cmd, string(ex.Type), ex.ChangeDir)
+		_ = e.ProcessManager.AddProcess(ex.Cmd, string(ex.Type), ex.ChangeDir)
 	}
 }
