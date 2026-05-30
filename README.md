@@ -53,6 +53,7 @@ type Config struct {
 	ExecList         []string          `toml:"exec_list"  yaml:"exec_list"`  // Simpler form, see [Execute Lifecycle]
 	LogLevel         string            `toml:"log_level"  yaml:"log_level"`
 	Debounce         int               `toml:"debounce"   yaml:"debounce"`
+	EnablePause      bool              `toml:"enable_pause" yaml:"enable_pause"` // Use Ctrl+Z to toggle pause/resume instead of suspending (Unix only)
 	Callback         func(*EventCallback) EventHandle
 	Slog             *slog.Logger
 }
@@ -60,14 +61,14 @@ type Config struct {
 type Ignore struct {
 	Dir          []string `toml:"dir"               yaml:"dir"`               // Directories to ignore, e.g. node_modules
 	File         []string `toml:"file"              yaml:"file"`              // Files to ignore
-	WatchedExten []string `toml:"watched_extension" yaml:"watched_extension"` // Extensions to watch; anything else is ignored
+	WatchedExten []string `toml:"watched_extension" yaml:"watched_extension"` // Extensions to watch; anything else is ignored. Empty watches all files.
 	IgnoreGit    bool     `toml:"git"               yaml:"git"`              // When true, .gitignore entries in the root are also ignored
 }
 
 type Execute struct {
 	Cmd       string      `toml:"cmd"        yaml:"cmd"`        // Command to run
 	ChangeDir string      `toml:"dir"        yaml:"dir"`        // Directory to run in, relative to root_path
-	DelayNext int         `toml:"delay_next" yaml:"delay_next"` // Delay in milliseconds before running
+	DelayNext int         `toml:"delay_next" yaml:"delay_next"` // Pause in milliseconds after this step, before the next one starts
 	Type      ExecuteType `toml:"type"       yaml:"type"`        // background | once | blocking | primary
 }
 ```
