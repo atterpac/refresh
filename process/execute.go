@@ -1,7 +1,7 @@
 package process
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -36,11 +36,24 @@ var KILL_STALE = Execute{
 var REFRESH_EXEC = "REFRESH"
 var KILL_EXEC = "KILL_STALE"
 
-// Takes a string and splits it on spaces to create a slice of strings
+// generateExec splits a command string on whitespace into a runnable command.
+// strings.Fields collapses repeated spaces so "go  build" is handled correctly.
 func generateExec(cmd string) *exec.Cmd {
-	slice := strings.Split(cmd, " ")
-	cmdEx := exec.Command(slice[0], slice[1:]...)
-	return cmdEx
+	fields := strings.Fields(cmd)
+	if len(fields) == 0 {
+		return exec.Command("")
+	}
+	return exec.Command(fields[0], fields[1:]...)
+}
+
+// generateExecContext is generateExec bound to a context, so the command is
+// killed if the context is cancelled (used for blocking/once steps).
+func generateExecContext(ctx context.Context, cmd string) *exec.Cmd {
+	fields := strings.Fields(cmd)
+	if len(fields) == 0 {
+		return exec.CommandContext(ctx, "")
+	}
+	return exec.CommandContext(ctx, fields[0], fields[1:]...)
 }
 
 func stringToExecuteType(typing string) (ExecuteType, error) {
@@ -54,6 +67,6 @@ func stringToExecuteType(typing string) (ExecuteType, error) {
 	case "primary":
 		return Primary, nil
 	default:
-		return "", errors.New(fmt.Sprintf("Execute type of %s, is invalid", typing))
+		return "", fmt.Errorf("execute type of %q is invalid", typing)
 	}
 }

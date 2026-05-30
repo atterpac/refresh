@@ -1,33 +1,23 @@
-//go:build windows || linux || darwin
-// +build windows linux darwin
-
 package engine
 
 import (
 	"context"
 	"errors"
-	"io"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/atterpac/refresh/process"
-	"github.com/rjeczalik/notify"
 )
 
 type Engine struct {
-	PrimaryProcess process.Process
-	BgProcess      process.Process
-	Chan           chan notify.EventInfo
-	Active         bool
 	Config         Config `toml:"config" yaml:"config"`
-	ProcessLogFile *os.File
-	ProcessLogPipe io.ReadCloser
 	ProcessManager *process.ProcessManager
 	ctx            context.Context
 	cancel         context.CancelFunc
-	isPaused       bool
 	log            *dynamicLogger
 }
 
@@ -66,47 +56,68 @@ func (engine *Engine) EnableLogs() {
 	}
 }
 
+// Start runs the initial process pass, begins watching the filesystem, and then
+// blocks on a single supervisor loop that serializes reloads and shutdown. It
+// returns nil on a clean (signal-triggered) exit, or an error if the initial
+// startup fails.
 func (engine *Engine) Start() error {
-	config := engine.Config
-	slog.Info("Refresh Starting...")
-	if config.Ignore.IgnoreGit {
-		config.ignoreMap.git = readGitIgnore(config.RootPath)
-	}
+	slog.Info("refresh starting")
 
-	waitTime := time.Duration(engine.Config.BackgroundStruct.DelayNext) * time.Millisecond
+	if len(EventMap) == 0 {
+		return errors.New("file watching is not supported on this platform")
+	}
+	if engine.Config.Ignore.IgnoreGit {
+		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
+	}
+	if delay := engine.Config.BackgroundStruct.DelayNext; delay > 0 {
+		time.Sleep(time.Duration(delay) * time.Millisecond)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	engine.ctx = ctx
 	engine.cancel = cancel
-	time.Sleep(waitTime)
 
-	trapChan := make(chan error)
-	go engine.sigTrap(trapChan)
-	go engine.ProcessManager.StartProcess(engine.ctx, engine.cancel)
-	go func() {
-		<-ctx.Done()
-		if ctx.Err() == context.Canceled {
-			if !engine.ProcessManager.FirstRun {
-				slog.Error("Could not refresh processes due to execution errors")
-				newCtx, newCancel := context.WithCancel(context.Background())
-				engine.ctx = newCtx
-				engine.cancel = newCancel
-				return
+	// Initial pass over all configured processes.
+	if err := engine.ProcessManager.Start(ctx); err != nil {
+		engine.ProcessManager.Shutdown()
+		cancel()
+		return fmt.Errorf("starting processes: %w", err)
+	}
+
+	engine.trapSignals()
+
+	// Reload requests from the watcher arrive here; the buffer of one plus a
+	// non-blocking send coalesces bursts into a single pending reload.
+	reload := make(chan struct{}, 1)
+	if err := engine.startWatcher(ctx, reload); err != nil {
+		engine.Stop()
+		engine.ProcessManager.Shutdown()
+		return err
+	}
+
+	// Supervisor loop: the only goroutine that drives process lifecycle, so the
+	// process manager needs no locking around its runtime state.
+	for {
+		select {
+		case <-ctx.Done():
+			engine.ProcessManager.Shutdown()
+			slog.Info("refresh stopped")
+			return nil
+		case <-reload:
+			slog.Info("change detected, reloading")
+			if err := engine.ProcessManager.Reload(ctx); err != nil {
+				slog.Error("reload failed", "err", err)
 			}
-			engine.Stop()
-			trapChan <- errors.New("An error occured while starting proceses")
 		}
-	}()
-
-	eventManager := NewEventManager(engine, engine.Config.Debounce)
-	go engine.watch(eventManager)
-	return <-trapChan
+	}
 }
 
+// Stop requests a graceful shutdown. The supervisor loop performs the actual
+// process teardown when the context is cancelled.
 func (engine *Engine) Stop() {
-	engine.ProcessManager.KillProcesses()
-	engine.cancel()
-	notify.Stop(engine.Chan)
+	if engine.cancel != nil {
+		engine.cancel()
+	}
 }
 
 // SetLogger replaces the engine's logger with a caller-supplied one. The logger
@@ -181,13 +192,14 @@ func (engine *Engine) AttachBackgroundCallback(callback func() bool) *Engine {
 	return engine
 }
 
-func (engine *Engine) sigTrap(ch chan error) {
+// trapSignals cancels the engine context on the first interrupt/terminate
+// signal, which lets the supervisor loop tear everything down gracefully.
+func (engine *Engine) trapSignals() {
 	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		sig := <-signalChan
-		slog.Warn("Graceful Exit Requested", "signal", sig)
+		slog.Warn("graceful exit requested", "signal", sig)
 		engine.Stop()
-		ch <- errors.New("Graceful Exit Requested")
 	}()
 }

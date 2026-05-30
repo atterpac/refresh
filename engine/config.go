@@ -3,10 +3,8 @@ package engine
 import (
 	"bufio"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -128,20 +126,14 @@ func (engine *Engine) StringtoConfigTOML(tomlString string) error {
 
 // Verify required data is present in config
 func (engine *Engine) verifyConfig() error {
-	slog.Debug("Verifying Config")
+	slog.Debug("verifying config")
 	if engine.Config.RootPath == "" {
-		slog.Error("Required Root Path is not set")
-		return errors.New("Required Root Path is not set")
+		return errors.New("root path is required")
 	}
-	err := engine.verifyExecute()
-	if err != nil {
+	if err := engine.verifyExecute(); err != nil {
 		return err
 	}
-	slog.Debug("Config Verified")
-	// Change directory executes are called in to match root directory
-	cleaned := cleanDirectory(engine.Config.RootPath)
-	slog.Info("Changing Working Directory", "dir", cleaned)
-	changeWorkingDirectory(cleaned)
+	slog.Debug("config verified")
 	return nil
 }
 
@@ -170,50 +162,26 @@ func readGitIgnore(path string) map[string]struct{} {
 		return nil
 	}
 	defer file.Close()
-	slog.Debug("Reading .gitignore")
+	slog.Debug("reading .gitignore")
 	scanner := bufio.NewScanner(file)
-	var linesMap = make(map[string]struct{})
+	linesMap := make(map[string]struct{})
 	for scanner.Scan() {
-		// Check if line is a comment
-		if strings.HasPrefix(scanner.Text(), "#") {
-			continue
-		}
-		// Check if line is empty
-		if len(scanner.Text()) == 0 {
-			continue
-		}
-
 		line := scanner.Text()
-		// Check if line does not start with '*'
+		// Skip comments and blank lines.
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		// Normalize to a glob so patternMatch can use it.
 		if !strings.HasPrefix(line, "*") {
-			// Add asterisk to the beginning of line
 			line = "*" + line
 		}
-		// Add to the map
 		linesMap[line] = struct{}{}
 	}
-	slog.Debug(fmt.Sprintf("Read %v lines from .gitignore", linesMap))
+	if err := scanner.Err(); err != nil {
+		slog.Debug("reading .gitignore", "err", err)
+	}
+	slog.Debug("read .gitignore", "patterns", len(linesMap))
 	return linesMap
-}
-
-func cleanDirectory(path string) string {
-	cleaned := strings.TrimPrefix(path, ".")
-	cleaned = strings.TrimPrefix(cleaned, "/")
-	if runtime.GOOS == "windows" {
-		cleaned = strings.TrimPrefix(cleaned, `\`) // Windows >:(
-	}
-	wd, err := os.Getwd()
-	if err != nil {
-		slog.Error("Getting Working Directory")
-	}
-	return wd + "/" + cleaned
-}
-
-func changeWorkingDirectory(path string) {
-	err := os.Chdir(path)
-	if err != nil {
-		slog.Error("Setting new directory", "dir", path)
-	}
 }
 
 func (e *Engine) generateProcess() {

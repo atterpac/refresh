@@ -1,151 +1,128 @@
-//go:build linux || darwin || windows
-// +build linux darwin windows
-
 package engine
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
-
-	// "log/slog"
 	"os"
 	"path/filepath"
 	"time"
 
-	"github.com/atterpac/refresh/process"
 	"github.com/rjeczalik/notify"
 )
 
-type EventManager struct {
-	engine            *Engine
-	lastEventTime     time.Time
-	debounceThreshold time.Duration
-	debounceTimer     *time.Timer
-	ctx               context.Context
-	cancel            context.CancelFunc
+// watcher translates raw filesystem notifications into debounced reload
+// requests. A single timer is reset on every reload-eligible event, so a burst
+// of writes (editors often emit several per save) collapses into one reload
+// fired after the quiet interval — true trailing-edge debounce.
+type watcher struct {
+	engine   *Engine
+	events   chan notify.EventInfo
+	reload   chan<- struct{}
+	debounce time.Duration
+	root     string
+	timer    *time.Timer
 }
 
-func NewEventManager(engine *Engine, debounce int) *EventManager {
-	ctx, cancel := context.WithCancel(context.Background())
-	em := &EventManager{
-		engine:            engine,
-		debounceThreshold: time.Duration(debounce) * time.Millisecond,
-		ctx:               ctx,
-		cancel:            cancel,
+// startWatcher begins watching the resolved root directory and spawns the
+// watcher goroutine. Reload requests are delivered on reload.
+func (engine *Engine) startWatcher(ctx context.Context, reload chan<- struct{}) error {
+	root := engine.ProcessManager.RootDir
+	if root == "" {
+		wd, err := os.Getwd()
+		if err != nil {
+			return fmt.Errorf("resolving watch root: %w", err)
+		}
+		root = wd
 	}
-	return em
+
+	events := make(chan notify.EventInfo, 16)
+	if err := notify.Watch(filepath.Join(root, "..."), events, notify.All); err != nil {
+		return fmt.Errorf("starting file watcher: %w", err)
+	}
+
+	w := &watcher{
+		engine:   engine,
+		events:   events,
+		reload:   reload,
+		debounce: time.Duration(engine.Config.Debounce) * time.Millisecond,
+		root:     root,
+	}
+	go w.run(ctx)
+	slog.Info("watching for changes", "root", root)
+	return nil
 }
 
-func (em *EventManager) HandleEvent(ei notify.EventInfo) {
-	eventInfo, ok := EventMap[ei.Event()]
-	if !ok {
-		slog.Error("Unknown event", "event", ei.Event())
-		return
-	}
+func (w *watcher) run(ctx context.Context) {
+	defer notify.Stop(w.events)
 
-	if em.engine.Config.Callback != nil {
-		event := CallbackMap[ei.Event()]
-		handle := em.engine.Config.Callback(&EventCallback{
-			Type: event,
-			Path: getPath(ei.Path()),
-			Time: time.Now(),
-		})
-		switch handle {
-		case EventContinue:
-			// Continue
-		case EventBypass:
-			// slog.Debug("Bypassing event", "event", ei.Event(), "path", ei.Path())
-			return
-		case EventIgnore:
-			// slog.Debug("Ignoring event", "event", ei.Event(), "path", ei.Path())
-			return
-		default:
-		}
-	}
-
-	if eventInfo.Reload {
-		newCtx, newCancel := context.WithCancel(context.Background())
-		em.engine.ctx = newCtx
-		em.engine.cancel = newCancel
-		if em.engine.Config.Ignore.shouldIgnore(ei.Path()) {
-			return
-		}
-		slog.Debug("Event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
-		currentTime := time.Now()
-		if currentTime.Sub(em.lastEventTime) >= em.debounceThreshold {
-			slog.Debug("Setting debounce timer", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
-			slog.Info("File modified...Refreshing", "file", getPath(ei.Path()))
-
-			// Find the specific process associated with the file change event
-			for _, p := range em.engine.ProcessManager.Processes {
-				if p.Type == process.Primary {
-					// Kill the specific process by canceling its context
-					if cancel, ok := em.engine.ProcessManager.Cancels[p.Exec]; ok {
-						cancel()
-						delete(em.engine.ProcessManager.Ctxs, p.Exec)
-						delete(em.engine.ProcessManager.Cancels, p.Exec)
-					}
-					break
-				}
-			}
-
-			// Start a new instance of the process
-			go em.engine.ProcessManager.StartProcess(em.engine.ctx, em.engine.cancel)
-			go func() {
-				<-em.engine.ctx.Done()
-				if em.engine.ctx.Err() == context.Canceled {
-					if !em.engine.ProcessManager.FirstRun {
-						// slog.Error("Could not refresh processes due to build errors")
-						newCtx, newCancel := context.WithCancel(context.Background())
-						em.engine.ctx = newCtx
-						em.engine.cancel = newCancel
-						return
-					}
-					em.engine.Stop()
-				}
-			}()
-
-			em.lastEventTime = currentTime
-		} else {
-			// slog.Debug("Debouncing event", "event", ei.Event(), "path", ei.Path(), "time", time.Now())
-		}
-	}
-}
-
-func (engine *Engine) watch(eventManager *EventManager) {
-	engine.Chan = make(chan notify.EventInfo, 5)
-	defer notify.Stop(engine.Chan)
-
-	wd, err := os.Getwd()
-	if err != nil {
-		slog.Error("Getting working directory")
-		return
-	}
-
-	if err := notify.Watch(wd+"/...", engine.Chan, notify.All); err != nil {
-		slog.Error("Watch Error", "err", err.Error())
-		return
+	// Start with a stopped, drained timer.
+	w.timer = time.NewTimer(0)
+	if !w.timer.Stop() {
+		<-w.timer.C
 	}
 
 	for {
 		select {
-		case ei := <-engine.Chan:
-			eventManager.HandleEvent(ei)
+		case <-ctx.Done():
+			w.timer.Stop()
+			return
+		case ei := <-w.events:
+			w.handle(ei)
+		case <-w.timer.C:
+			w.signalReload()
+		}
+	}
+}
+
+// handle decides whether a single event should (eventually) trigger a reload,
+// applying the platform event map, the user callback, and the ignore rules,
+// then resets the debounce timer.
+func (w *watcher) handle(ei notify.EventInfo) {
+	info, ok := EventMap[ei.Event()]
+	if !ok {
+		slog.Debug("unknown event", "event", ei.Event())
+		return
+	}
+	if !info.Reload {
+		return
+	}
+
+	rel := w.relPath(ei.Path())
+
+	if w.engine.Config.Callback != nil {
+		switch w.engine.Config.Callback(&EventCallback{
+			Type: CallbackMap[ei.Event()],
+			Path: rel,
+			Time: time.Now(),
+		}) {
+		case EventBypass, EventIgnore:
+			return
 		}
 	}
 
+	if w.engine.Config.Ignore.shouldIgnore(ei.Path()) {
+		slog.Debug("ignoring change", "path", rel)
+		return
+	}
+
+	slog.Debug("change detected", "path", rel, "event", info.Name)
+	w.timer.Reset(w.debounce)
 }
 
-func getPath(path string) string {
-	wd, err := os.Getwd()
-	if err != nil {
-		// slog.Error("Getting working directory")
-		return ""
+// signalReload performs a non-blocking send so a reload that is already queued
+// is not duplicated; the buffered channel coalesces bursts into one reload.
+func (w *watcher) signalReload() {
+	select {
+	case w.reload <- struct{}{}:
+	default:
 	}
-	relPath, err := filepath.Rel(wd, path)
+}
+
+func (w *watcher) relPath(path string) string {
+	rel, err := filepath.Rel(w.root, path)
 	if err != nil {
-		// slog.Error("Getting relative path")
-		return ""
+		return path
 	}
-	return relPath
+	return rel
 }

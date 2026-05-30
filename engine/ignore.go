@@ -78,15 +78,6 @@ func (i *Ignore) isWatchedExtension(path string) bool {
 // 	return patternMatch(path, rules)
 // }
 
-func mapHasItems(m map[string]struct{}) bool {
-	return len(m) >= 0
-}
-
-// Checks if filepath ends in tilde returns true if it does
-func isTmp(path string) bool {
-	return len(path) > 0 && path[len(path)-1] == '~'
-}
-
 // Checks if path contains any directories in the ignore directory config
 func isIgnoreDir(path string, rules []string) bool {
 	dirs := strings.Split(path, string(filepath.Separator))
