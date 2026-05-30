@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/BurntSushi/toml"
@@ -23,7 +24,6 @@ type Config struct {
 	Debounce           int               `toml:"debounce"   yaml:"debounce"`
 	Callback           func(*EventCallback) EventHandle
 	Slog               *slog.Logger
-	ignoreMap          ignoreMap
 }
 
 func DefaultEngineConfig() Config {
@@ -207,17 +207,19 @@ func (engine *Engine) verifyExecute() error {
 	return nil
 }
 
-func readGitIgnore(path string) map[string]struct{} {
-	file, err := os.Open(path + "/.gitignore")
+// readGitIgnore reads the root .gitignore and returns its entries as globs that
+// patternMatch can apply. Returns nil if there is no .gitignore.
+func readGitIgnore(path string) []string {
+	file, err := os.Open(filepath.Join(path, ".gitignore"))
 	if err != nil {
 		return nil
 	}
 	defer file.Close()
 	slog.Debug("reading .gitignore")
 	scanner := bufio.NewScanner(file)
-	linesMap := make(map[string]struct{})
+	var patterns []string
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
 		// Skip comments and blank lines.
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -226,13 +228,13 @@ func readGitIgnore(path string) map[string]struct{} {
 		if !strings.HasPrefix(line, "*") {
 			line = "*" + line
 		}
-		linesMap[line] = struct{}{}
+		patterns = append(patterns, line)
 	}
 	if err := scanner.Err(); err != nil {
 		slog.Debug("reading .gitignore", "err", err)
 	}
-	slog.Debug("read .gitignore", "patterns", len(linesMap))
-	return linesMap
+	slog.Debug("read .gitignore", "patterns", len(patterns))
+	return patterns
 }
 
 func (e *Engine) generateProcess() {

@@ -3,6 +3,7 @@ package engine
 import (
 	"log/slog"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -11,43 +12,23 @@ type Ignore struct {
 	File         []string `toml:"file"              yaml:"file"`
 	WatchedExten []string `toml:"watched_extension" yaml:"watched_extension"`
 	IgnoreGit    bool     `toml:"git"               yaml:"git"`
+
+	// gitPatterns holds globs read from the root .gitignore when IgnoreGit is
+	// set. Populated by the engine at startup; not user-configured.
+	gitPatterns []string
 }
 
-type ignoreMap struct {
-	dir       map[string]struct{}
-	file      map[string]struct{}
-	extension map[string]struct{}
-	git       map[string]struct{}
-}
-
-// Runs all ignore checks to decide if reload should happen
-// func (i *ignoreMap) checkIgnore(path string) bool {
-// slog.Debug("Checking Ignore")
-// basePath := filepath.Base(path)
-// if isTmp(basePath) {
-// 	return true
-// }
-// if isIgnoreDir(path, i.dir) {
-// 	return true
-// }
-// dir := checkIgnoreMap(path, i.dir)
-// file := checkIgnoreMap(path, i.file)
-// git := checkIgnoreMap(path, i.git)
-// return dir || file || git
-// 	return i.shouldIgnore(path)
-// }
-
+// shouldIgnore reports whether a change to path should be skipped. A path is
+// considered only if it matches a watched extension; it is then ignored if it
+// sits in an ignored directory or matches an ignore-file or .gitignore pattern.
 func (i *Ignore) shouldIgnore(path string) bool {
-	if i.isWatchedExtension(path) {
-		slog.Debug("Checking Watched Extension", "path", path)
-		if isIgnoreDir(path, i.Dir) ||
-			patternMatch(path, i.Dir) ||
-			patternMatch(path, i.File) {
-			return true
-		}
-		return false
+	if !i.isWatchedExtension(path) {
+		return true
 	}
-	return true
+	return isIgnoreDir(path, i.Dir) ||
+		patternMatch(path, i.Dir) ||
+		patternMatch(path, i.File) ||
+		patternMatch(path, i.gitPatterns)
 }
 
 func (i *Ignore) isWatchedExtension(path string) bool {
@@ -67,43 +48,13 @@ func (i *Ignore) isWatchedExtension(path string) bool {
 	return patternMatch(path, i.WatchedExten)
 }
 
-// func checkIgnoreMap(path string, rules map[string]struct{}) bool {
-// 	slog.Debug(fmt.Sprintf("Checking map: %v for %s", rules, path))
-// 	_, ok := rules[path]
-// 	return mapHasItems(rules) && patternMatch(path, rules) || ok
-// }
-//
-// func checkExtension(path string, rules map[string]struct{}) bool {
-// 	slog.Debug(fmt.Sprintf("Checking Extension map: %v for %s", rules, path))
-// 	return patternMatch(path, rules)
-// }
-
-// Checks if path contains any directories in the ignore directory config
+// isIgnoreDir reports whether any path component exactly matches an ignore rule.
 func isIgnoreDir(path string, rules []string) bool {
-	dirs := strings.Split(path, string(filepath.Separator))
-	for _, dir := range dirs {
-		for _, rule := range rules {
-			if dir == rule {
-				slog.Debug("Ignore Dir", "dir", dir)
-				return true
-			}
+	for dir := range strings.SplitSeq(path, string(filepath.Separator)) {
+		if slices.Contains(rules, dir) {
+			slog.Debug("ignoring directory", "dir", dir)
+			return true
 		}
 	}
 	return false
-}
-
-func convertToIgnoreMap(ignore Ignore) ignoreMap {
-	return ignoreMap{
-		file:      convertToMap(ignore.File),
-		dir:       convertToMap(ignore.Dir),
-		extension: convertToMap(ignore.WatchedExten),
-	}
-}
-
-func convertToMap(slice []string) map[string]struct{} {
-	m := make(map[string]struct{})
-	for _, v := range slice {
-		m[v] = struct{}{}
-	}
-	return m
 }

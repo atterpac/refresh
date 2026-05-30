@@ -2,7 +2,9 @@ dist/
 
 # Build artifacts — never commit compiled binaries
 /app
-example/test/app
-example/test/bin/
 bin/
 *.exe
+
+# Example runtime output
+examples/kitchen-sink/artifacts/
+examples/kitchen-sink/sub/marker.txt

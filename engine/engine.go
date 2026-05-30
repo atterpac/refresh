@@ -67,7 +67,7 @@ func (engine *Engine) Start() error {
 		return errors.New("file watching is not supported on this platform")
 	}
 	if engine.Config.Ignore.IgnoreGit {
-		engine.Config.ignoreMap.git = readGitIgnore(engine.Config.RootPath)
+		engine.Config.Ignore.gitPatterns = readGitIgnore(engine.Config.RootPath)
 	}
 	if delay := engine.Config.BackgroundStruct.DelayNext; delay > 0 {
 		time.Sleep(time.Duration(delay) * time.Millisecond)
@@ -144,7 +144,6 @@ func NewEngineFromConfig(options Config) (*Engine, error) {
 	engine := &Engine{}
 	engine.Config = options
 	engine.initLogger()
-	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	err := engine.verifyConfig()
 	if err != nil {
 		return nil, err
@@ -161,7 +160,6 @@ func NewEngineFromTOML(confPath string) (*Engine, error) {
 		return nil, err
 	}
 	engine.initLogger()
-	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	if err := engine.verifyConfig(); err != nil {
 		return nil, err
 	}
@@ -177,7 +175,6 @@ func NewEngineFromYAML(confPath string) (*Engine, error) {
 		return nil, err
 	}
 	engine.initLogger()
-	engine.Config.ignoreMap = convertToIgnoreMap(engine.Config.Ignore)
 	if err := engine.verifyConfig(); err != nil {
 		return nil, err
 	}
