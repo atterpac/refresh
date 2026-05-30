@@ -93,6 +93,37 @@ func TestStartReloadShutdownLifecycle(t *testing.T) {
 	}
 }
 
+func TestShellFeaturesAreSupported(t *testing.T) {
+	root := t.TempDir()
+	pm := NewProcessManager()
+	if err := pm.SetRootDirectory(root); err != nil {
+		t.Fatal(err)
+	}
+	// Redirection and && only work when the command runs through a shell rather
+	// than a bare argv split.
+	if err := pm.AddProcess("echo one > out.txt && echo two >> out.txt", "blocking", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := pm.AddProcess("sleep 30", "primary", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := pm.Start(ctx); err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer pm.Shutdown()
+
+	data, err := os.ReadFile(filepath.Join(root, "out.txt"))
+	if err != nil {
+		t.Fatalf("shell command did not produce output file: %v", err)
+	}
+	if got := string(data); got != "one\ntwo\n" {
+		t.Errorf("shell features not honored, out.txt = %q", got)
+	}
+}
+
 func TestStartWithNoProcessesErrors(t *testing.T) {
 	pm := NewProcessManager()
 	if err := pm.Start(context.Background()); err == nil {
