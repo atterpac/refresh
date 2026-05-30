@@ -1,27 +1,21 @@
-# Sample configuration for refresh
-root_path: "./src"
-log_level: "debug"
-debounce: 500
+# Equivalent of main.go expressed as a config file.
+# Load it with engine.NewEngineFromYAML("config.yaml").
+# Note the top-level `config:` key, which NewEngineFromYAML expects.
+config:
+  root_path: "."
+  log_level: "debug"
+  debounce: 500
 
-ignore:
-  dir: [".git", "node_modules", "vendor"]
-  file: [".gitignore", ".DS_Store"]
-  watched_extension: ["*.go", "*.js", "*.ts", "*.jsx", "*.tsx", "*.html", "*.css"]
-  git_ignore: true
+  ignore:
+    dir: [".git", "node_modules", "vendor", "bin"]
+    file: [".gitignore", ".DS_Store"]
+    watched_extension: ["*.go"]
+    git: true
 
-# Define processes to run
-executes:
-  - cmd: "go run main.go"
-    type: "primary"
-    change_dir: "./src"
-  
-  - cmd: "npm run watch"
-    type: "background"
-    change_dir: "./frontend"
-    
-  - cmd: "go generate ./..."
-    type: "once"
-    
-  - cmd: "go test ./..."
-    type: "blocking"
-    timeout: 30 
+  # Executes run in order. type is one of: background | once | blocking | primary
+  executes:
+    - cmd: "go build -o ./bin/app ./app"
+      type: "blocking"
+
+    - cmd: "./bin/app"
+      type: "primary"
