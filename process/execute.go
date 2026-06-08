@@ -1,12 +1,15 @@
 package process
 
 import (
-	"context"
 	"fmt"
 	"os/exec"
 )
 
 type Execute struct {
+	// Name is a stable, human-meaningful identifier for the process. Consumers
+	// (e.g. a TUI) use it as the key for a per-process log pane. Optional; when
+	// empty it defaults to the command string.
+	Name      string `toml:"name"       yaml:"name"`
 	Cmd       string `toml:"cmd"        yaml:"cmd"`        // Execute command
 	ChangeDir string `toml:"dir"        yaml:"dir"`        // If directory needs to be changed to call this command relative to the root path
 	DelayNext int    `toml:"delay_next" yaml:"delay_next"` // Pause in ms held after this step completes, before the next process starts
@@ -41,13 +44,6 @@ var KILL_EXEC = "KILL_STALE"
 func generateExec(cmd string) *exec.Cmd {
 	shell, args := shellInvocation(cmd)
 	return exec.Command(shell, args...)
-}
-
-// generateExecContext is generateExec bound to a context, so the command is
-// killed if the context is cancelled (used for blocking/once steps).
-func generateExecContext(ctx context.Context, cmd string) *exec.Cmd {
-	shell, args := shellInvocation(cmd)
-	return exec.CommandContext(ctx, shell, args...)
 }
 
 func stringToExecuteType(typing string) (ExecuteType, error) {
