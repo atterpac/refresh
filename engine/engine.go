@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/atterpac/refresh/process"
@@ -18,6 +19,76 @@ type Engine struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	log            *dynamicLogger
+
+	// Control plane for programmatic Reload/Pause/Resume. reloadCh carries reload
+	// requests (from the watcher, the Ctrl+Z path, or Reload); wakeCh nudges the
+	// supervisor to re-evaluate after a resume so a change made while paused is
+	// applied. Both are buffered with a non-blocking send so producers never
+	// block. paused is the authoritative pause flag, owned by the setters and
+	// read by the supervisor and Paused.
+	reloadCh chan struct{}
+	wakeCh   chan struct{}
+	paused   atomic.Bool
+}
+
+// initControl allocates the control-plane channels. Called by every constructor
+// so Reload/Pause/Resume are safe to call before (and after) the supervisor is
+// running — sends are non-blocking, so they are simply dropped when no
+// supervisor is draining them.
+func (engine *Engine) initControl() {
+	engine.reloadCh = make(chan struct{}, 1)
+	engine.wakeCh = make(chan struct{}, 1)
+}
+
+// nonBlockingSend pokes a single-slot signal channel without ever blocking the
+// caller; a poke that finds the slot already full is coalesced into the pending
+// one.
+func nonBlockingSend(ch chan struct{}) {
+	if ch == nil {
+		return
+	}
+	select {
+	case ch <- struct{}{}:
+	default:
+	}
+}
+
+// Reload triggers a reload cycle (re-run blocking steps, restart the primary),
+// exactly as a file change would. Honors pause: if the engine is paused the
+// reload is deferred and applied on Resume. Safe to call from any goroutine.
+func (engine *Engine) Reload() {
+	nonBlockingSend(engine.reloadCh)
+}
+
+// Pause suspends reload handling. File changes (and Reload calls) made while
+// paused are remembered and applied on the next Resume. Idempotent.
+func (engine *Engine) Pause() {
+	if engine.paused.CompareAndSwap(false, true) {
+		slog.Warn("refresh paused — changes deferred until resumed")
+	}
+}
+
+// Resume re-enables reload handling and applies any change that arrived while
+// paused. Idempotent.
+func (engine *Engine) Resume() {
+	if engine.paused.CompareAndSwap(true, false) {
+		slog.Warn("refresh resumed")
+		nonBlockingSend(engine.wakeCh)
+	}
+}
+
+// Paused reports whether the engine is currently paused.
+func (engine *Engine) Paused() bool {
+	return engine.paused.Load()
+}
+
+// togglePause flips the pause state; used by the Ctrl+Z handler.
+func (engine *Engine) togglePause() {
+	if engine.Paused() {
+		engine.Resume()
+	} else {
+		engine.Pause()
+	}
 }
 
 // initLogger builds the engine's logger from the configured level (and an
@@ -60,6 +131,27 @@ func (engine *Engine) EnableLogs() {
 // returns nil on a clean (signal-triggered) exit, or an error if the initial
 // startup fails.
 func (engine *Engine) Start() error {
+	return engine.run(context.Background(), true)
+}
+
+// Run is Start for an embedding caller that owns process and signal handling
+// itself — for example a TUI that drives the terminal and translates its own
+// keystrokes into pause/reload. It runs the initial pass and supervises reloads
+// until ctx is cancelled, but installs no OS signal handlers (no SIGINT/SIGTERM
+// trap, and no Ctrl+Z pause trap even when EnablePause is set). Cancel ctx, or
+// call Stop, to shut down. Run blocks; call it from its own goroutine.
+func (engine *Engine) Run(ctx context.Context) error {
+	return engine.run(ctx, false)
+}
+
+// Processes returns a snapshot of every configured process and its current
+// runtime state. Safe to call from any goroutine, including before Start/Run
+// (every process reports as pending until started).
+func (engine *Engine) Processes() []process.ProcessInfo {
+	return engine.ProcessManager.Snapshot()
+}
+
+func (engine *Engine) run(parent context.Context, trapOSSignals bool) error {
 	slog.Info("refresh starting")
 
 	if len(EventMap) == 0 {
@@ -69,40 +161,48 @@ func (engine *Engine) Start() error {
 		engine.Config.Ignore.gitPatterns = readGitIgnore(engine.Config.RootPath)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(parent)
 	engine.ctx = ctx
 	engine.cancel = cancel
+
+	// Trap signals before the initial pass: it starts processes and runs blocking
+	// steps synchronously, so an interrupt mid-pass must cancel ctx to tear them down.
+	if trapOSSignals {
+		engine.trapSignals()
+	}
 
 	// Initial pass over all configured processes.
 	if err := engine.ProcessManager.Start(ctx); err != nil {
 		engine.ProcessManager.Shutdown()
+		// A cancelled context means an interrupt arrived mid-startup: that's a
+		// clean shutdown, not a startup failure, so don't surface it as an error.
+		if ctx.Err() != nil {
+			slog.Info("refresh stopped")
+			return nil
+		}
 		cancel()
 		return fmt.Errorf("starting processes: %w", err)
 	}
 
-	engine.trapSignals()
-
-	// Reload requests from the watcher arrive here; the buffer of one plus a
-	// non-blocking send coalesces bursts into a single pending reload.
-	reload := make(chan struct{}, 1)
-	if err := engine.startWatcher(ctx, reload); err != nil {
+	// The watcher delivers reload requests on the same control channel that
+	// Reload uses, so file-driven and programmatic reloads share one path.
+	if err := engine.startWatcher(ctx, engine.reloadCh); err != nil {
 		engine.Stop()
 		engine.ProcessManager.Shutdown()
 		return err
 	}
 
-	// Optional pause/resume toggle, driven by the suspend key (Ctrl+Z). The
-	// buffered, non-blocking send keeps the toggle from blocking the signal
-	// goroutine and coalesces rapid presses.
-	toggle := make(chan struct{}, 1)
-	if engine.Config.EnablePause {
-		engine.trapControlSignals(toggle)
+	// Optional pause/resume via the suspend key (Ctrl+Z). Only wired when this
+	// engine owns OS signals; an embedding caller (Run) drives Pause/Resume
+	// through its own input handling instead. Programmatic Pause/Resume/Reload
+	// work regardless of this.
+	if trapOSSignals && engine.Config.EnablePause {
+		engine.trapControlSignals()
 	}
 
 	// Supervisor loop: the only goroutine that drives process lifecycle, so the
-	// process manager needs no locking around its runtime state. paused and
-	// pending live here for the same reason.
-	paused := false
+	// process manager needs no locking around its handles. pending lives here;
+	// the pause flag is the engine's atomic, set by Pause/Resume.
 	pending := false // a reload arrived while paused
 
 	for {
@@ -111,22 +211,17 @@ func (engine *Engine) Start() error {
 			engine.ProcessManager.Shutdown()
 			slog.Info("refresh stopped")
 			return nil
-		case <-toggle:
-			paused = !paused
-			if paused {
-				slog.Warn("refresh paused — file changes ignored until resumed")
-				continue
-			}
-			slog.Warn("refresh resumed")
-			if pending {
+		case <-engine.wakeCh:
+			// A resume occurred; apply any change deferred while paused.
+			if !engine.paused.Load() && pending {
 				pending = false
 				slog.Info("applying change made while paused, reloading")
 				if err := engine.ProcessManager.Reload(ctx); err != nil {
 					slog.Error("reload failed", "err", err)
 				}
 			}
-		case <-reload:
-			if paused {
+		case <-engine.reloadCh:
+			if engine.paused.Load() {
 				pending = true
 				continue
 			}
@@ -156,6 +251,7 @@ func (engine *Engine) SetLogger(logger *slog.Logger) {
 
 func NewEngineFromConfig(options Config) (*Engine, error) {
 	engine := &Engine{}
+	engine.initControl()
 	engine.Config = options
 	engine.initLogger()
 	err := engine.verifyConfig()
@@ -170,6 +266,7 @@ func NewEngineFromConfig(options Config) (*Engine, error) {
 
 func NewEngineFromTOML(confPath string) (*Engine, error) {
 	engine := &Engine{}
+	engine.initControl()
 	if _, err := engine.readConfigFile(confPath); err != nil {
 		return nil, err
 	}
@@ -185,6 +282,7 @@ func NewEngineFromTOML(confPath string) (*Engine, error) {
 
 func NewEngineFromYAML(confPath string) (*Engine, error) {
 	engine := &Engine{}
+	engine.initControl()
 	if _, err := engine.readConfigYaml(confPath); err != nil {
 		return nil, err
 	}

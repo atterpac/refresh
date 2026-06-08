@@ -9,6 +9,14 @@ import "github.com/atterpac/refresh/process"
 type (
 	Execute     = process.Execute
 	ExecuteType = process.ExecuteType
+
+	// Observability types for SDK consumers (e.g. a TUI) tapping per-process
+	// output and lifecycle. See the process package for documentation.
+	ProcessInfo  = process.ProcessInfo
+	ProcessEvent = process.ProcessEvent
+	ProcessState = process.ProcessState
+	OutputFunc   = process.OutputFunc
+	EventFunc    = process.EventFunc
 )
 
 var (
@@ -16,6 +24,12 @@ var (
 	Once       = process.Once
 	Blocking   = process.Blocking
 	Primary    = process.Primary
+
+	StatePending = process.StatePending
+	StateRunning = process.StateRunning
+	StateExited  = process.StateExited
+	StateFailed  = process.StateFailed
+	StateKilled  = process.StateKilled
 
 	// KILL_STALE is a marker execute (struct form) indicating where a stale
 	// primary should be terminated. The supervisor now restarts the primary

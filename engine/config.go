@@ -28,6 +28,17 @@ type Config struct {
 	EnablePause bool `toml:"enable_pause" yaml:"enable_pause"`
 	Callback    func(*EventCallback) EventHandle
 	Slog        *slog.Logger
+
+	// Output, when set, taps each process's stdout/stderr: it is called once per
+	// stream when a process starts and returns the io.Writer that stream is wired
+	// to. Returning nil keeps the default (the process's own os.Stdout/os.Stderr).
+	// An upstream TUI returns a per-process buffer here to render separated logs.
+	Output process.OutputFunc
+
+	// OnProcessEvent, when set, receives a ProcessEvent on every process state
+	// transition (running, exited, failed, killed). It is called synchronously
+	// from the supervising goroutine and must not block.
+	OnProcessEvent process.EventFunc
 }
 
 func DefaultEngineConfig() Config {
@@ -254,12 +265,18 @@ func readGitIgnore(path string) []string {
 }
 
 func (e *Engine) generateProcess() {
+	// Wire the observability hooks before any process is added so snapshots and
+	// events are available for the whole lifecycle.
+	e.ProcessManager.Output = e.Config.Output
+	e.ProcessManager.OnEvent = e.Config.OnProcessEvent
+
 	// A configured background command is started once at startup, survives
 	// reloads, and is killed on shutdown — regardless of any Type set on it.
 	if bg := e.Config.BackgroundStruct; bg.Cmd != "" {
-		_ = e.ProcessManager.AddProcessWithDelay(bg.Cmd, string(process.Background), bg.ChangeDir, bg.DelayNext)
+		bg.Type = process.Background
+		_ = e.ProcessManager.AddProcessSpec(bg)
 	}
 	for _, ex := range e.Config.ExecStruct {
-		_ = e.ProcessManager.AddProcessWithDelay(ex.Cmd, string(ex.Type), ex.ChangeDir, ex.DelayNext)
+		_ = e.ProcessManager.AddProcessSpec(ex)
 	}
 }
