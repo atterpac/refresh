@@ -340,6 +340,7 @@ func (pm *ProcessManager) waitUntilReady(ctx context.Context, p *Process) error 
 			if err != nil {
 				return fmt.Errorf("creating readiness request: %w", err)
 			}
+			req.Header.Set("Accept", "*/*")
 			response, err := client.Do(req)
 			if err == nil {
 				ready = response.StatusCode == http.StatusOK
